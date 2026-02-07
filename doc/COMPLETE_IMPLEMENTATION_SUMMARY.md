@@ -580,7 +580,7 @@ Implementasi Settings dengan BLoC pattern telah **SELESAI SEMPURNA** dengan:
 
 ---
 
-**Implementation by**: BLACKBOXAI  
+**Implementation by**: Putu Putra Eka Persada
 **Pattern**: BLoC (Business Logic Component)  
 **Status**: ✅ **COMPLETE & PRODUCTION READY**  
 **Quality**: ⭐⭐⭐⭐⭐ (5/5)  
