@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "801750761432",
+    "project_id": "gunas-employee-attendance",
+    "storage_bucket": "gunas-employee-attendance.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:801750761432:android:98026c8b5d3cf5e1487cad",
+        "android_client_info": {
+          "package_name": "com.example.gunas_employee_attendance"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDk0JyB4LscetQDRbtqttnBV7FohlVg3gs"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
