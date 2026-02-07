@@ -626,19 +626,9 @@ This project is private and proprietary. All rights reserved.
 
 ### Development Team
 
-- **Lead Developer** - BLACKBOXAI
+- **Lead Developer** - Putu Putra Eka Persada
 - **Architecture** - Clean Architecture with BLoC
 - **UI/UX** - Material Design with Cupertino elements
-
----
-
-## 📞 Support
-
-For support and questions:
-
-- **Email**: putupersada@gmail.com
-- **Documentation**: [docs](doc/)
-- **Issues**: [GitHub Issues](https://github.com/PutuPutra/employee_attendance_app/issues)
 
 ---
 
