@@ -1,8 +1,49 @@
+import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import '../l10n/app_localizations.dart';
 
-class FaceScreen extends StatelessWidget {
+class FaceScreen extends StatefulWidget {
   const FaceScreen({super.key});
+
+  @override
+  State<FaceScreen> createState() => _FaceScreenState();
+}
+
+class _FaceScreenState extends State<FaceScreen> {
+  CameraController? controller;
+  bool _isCameraInitialized = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _initializeCamera();
+  }
+
+  Future<void> _initializeCamera() async {
+    final cameras = await availableCameras();
+    final frontCamera = cameras.firstWhere(
+      (camera) => camera.lensDirection == CameraLensDirection.front,
+      orElse: () => cameras.first,
+    );
+
+    controller = CameraController(
+      frontCamera,
+      ResolutionPreset.medium,
+      enableAudio: false,
+    );
+
+    await controller!.initialize();
+    if (!mounted) return;
+    setState(() {
+      _isCameraInitialized = true;
+    });
+  }
+
+  @override
+  void dispose() {
+    controller?.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -29,6 +70,8 @@ class FaceScreen extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               const Spacer(),
+
+              /// TITLE
               Text(
                 l10n.faceRegistration,
                 style: const TextStyle(
@@ -42,25 +85,32 @@ class FaceScreen extends StatelessWidget {
                 l10n.positionYourFace,
                 style: const TextStyle(color: Colors.white70, fontSize: 16),
               ),
-              const SizedBox(height: 50),
+
+              const SizedBox(height: 40),
+
+              /// 🔥 CAMERA PREVIEW KOTAK
               Container(
-                width: 250,
-                height: 250,
+                width: 280,
+                height: 380, // 👈 sama → jadi KOTAK
                 decoration: BoxDecoration(
-                  shape: BoxShape.circle,
+                  borderRadius: BorderRadius.circular(16),
                   border: Border.all(color: Colors.white, width: 4),
-                  color: Colors.white.withValues(alpha: 0.1),
                 ),
-                child: const Icon(
-                  Icons.camera_alt,
-                  color: Colors.white,
-                  size: 80,
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: _isCameraInitialized
+                      ? CameraPreview(controller!)
+                      : const Center(
+                          child: CircularProgressIndicator(color: Colors.white),
+                        ),
                 ),
               ),
+
               const SizedBox(height: 50),
+
+              /// BUTTON
               ElevatedButton(
                 onPressed: () {
-                  // TODO: Implement face recognition
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(content: Text(l10n.faceRecognitionNotImplemented)),
                   );
@@ -84,7 +134,10 @@ class FaceScreen extends StatelessWidget {
                   ),
                 ),
               ),
+
               const Spacer(),
+
+              /// SKIP
               Padding(
                 padding: const EdgeInsets.all(20),
                 child: TextButton(

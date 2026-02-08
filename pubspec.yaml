@@ -29,6 +29,7 @@ environment:
 # versions available, run `flutter pub outdated`.
 dependencies:
   animate_do: ^4.2.0
+  camera: ^0.11.3
   cupertino_icons: ^1.0.8
   equatable: ^2.0.7
   firebase_auth: ^6.1.4
@@ -116,7 +117,5 @@ flutter:
         - asset: fonts/Poppins-BlackItalic.ttf
           weight: 900
           style: italic
-
-  #
   # For details regarding fonts from package dependencies,
   # see https://flutter.dev/to/font-from-package
