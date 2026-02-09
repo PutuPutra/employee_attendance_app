@@ -8,8 +8,9 @@ import 'package:image/image.dart' as img;
 
 class MLService {
   Interpreter? _interpreter;
-  double threshold =
-      1.2; // Ambang batas dinaikkan lagi untuk mempermudah matching awal
+  // Threshold (Ambang Batas): Semakin KECIL semakin KETAT/AMAN.
+  // 1.0 adalah standar yang seimbang. 1.2 agak longgar.
+  double threshold = 1.0;
 
   Future<void> initialize() async {
     try {
@@ -163,7 +164,11 @@ class MLService {
 
   bool isMatch(List<double> e1, List<double> e2) {
     double distance = euclideanDistance(e1, e2);
-    print('Face Distance: $distance'); // Debugging: Cek nilai jarak di console
-    return distance < threshold;
+    bool isMatched = distance < threshold;
+    // Log yang lebih jelas untuk memantau akurasi secara realtime
+    print(
+      '🔍 Jarak Wajah: ${distance.toStringAsFixed(4)} -> ${isMatched ? "✅ COCOK" : "❌ TIDAK COCOK"}',
+    );
+    return isMatched;
   }
 }
