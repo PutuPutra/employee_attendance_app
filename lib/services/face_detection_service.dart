@@ -11,9 +11,9 @@ class FaceDetectionService {
   void initialize() {
     _faceDetector = FaceDetector(
       options: FaceDetectorOptions(
-        performanceMode: FaceDetectorMode.accurate,
-        enableContours: true,
-        enableClassification: true,
+        performanceMode: FaceDetectorMode.fast,
+        enableContours: false,
+        enableClassification: false,
       ),
     );
   }
@@ -27,6 +27,7 @@ class FaceDetectionService {
 
     try {
       final faces = await _faceDetector.processImage(inputImage);
+      debugPrint("ML Kit Found: ${faces.length} faces"); // DEBUG LOG
       if (faces.isNotEmpty) {
         return faces.first;
       }
@@ -40,33 +41,63 @@ class FaceDetectionService {
     CameraImage image,
     CameraDescription cameraDescription,
   ) {
-    final rotation = InputImageRotationValue.fromRawValue(
-      cameraDescription.sensorOrientation,
-    );
-    if (rotation == null) return null;
+    final rotation = _getInputImageRotation(cameraDescription);
 
     final format = InputImageFormatValue.fromRawValue(image.format.raw);
-    if (format == null ||
-        (Platform.isAndroid && format != InputImageFormat.nv21) ||
-        (Platform.isIOS && format != InputImageFormat.bgra8888)) {
-      debugPrint('Image format not supported on this platform.');
+
+    // Validasi format diperlonggar untuk Android karena kita melakukan konversi manual.
+    // InputImageFormat.yuv_420_888 terkadang bermasalah saat validasi enum equality.
+    if (Platform.isIOS && format != InputImageFormat.bgra8888) {
+      debugPrint('Image format not supported on this platform: $format');
       return null;
     }
 
-    // ## INI BAGIAN YANG DIPERBAIKI SECARA TOTAL ##
+    Uint8List bytes;
+    if (Platform.isAndroid && image.planes.length > 1) {
+      final WriteBuffer allBytes = WriteBuffer();
+      for (final Plane plane in image.planes) {
+        allBytes.putUint8List(plane.bytes);
+      }
+      bytes = allBytes.done().buffer.asUint8List();
+    } else {
+      bytes = image.planes[0].bytes;
+    }
+
     return InputImage.fromBytes(
-      bytes: image.planes[0].bytes,
+      bytes: bytes,
       metadata: InputImageMetadata(
-        size: Size(
-          image.width.toDouble(),
-          image.height.toDouble(),
-        ), // 'Size' sekarang terdefinisi
-        rotation: rotation,
-        format: format,
-        // Menggunakan parameter 'bytesPerRow' yang benar dan menghapus 'planes'
+        size: Size(image.width.toDouble(), image.height.toDouble()),
+        rotation:
+            rotation ??
+            InputImageRotation
+                .rotation270deg, // Default ke 270 untuk kamera depan Android
+        format: Platform.isAndroid
+            ? InputImageFormat.nv21
+            : (format ?? InputImageFormat.yuv420),
         bytesPerRow: image.planes[0].bytesPerRow,
       ),
     );
+  }
+
+  InputImageRotation? _getInputImageRotation(
+    CameraDescription cameraDescription,
+  ) {
+    final sensorOrientation = cameraDescription.sensorOrientation;
+    InputImageRotation? rotation;
+    if (Platform.isAndroid) {
+      var rotationCompensation =
+          0; // orientations[controller!.value.deviceOrientation];
+      if (cameraDescription.lensDirection == CameraLensDirection.front) {
+        // front-facing
+        rotationCompensation = (sensorOrientation + rotationCompensation) % 360;
+      } else {
+        // back-facing
+        rotationCompensation =
+            (sensorOrientation - rotationCompensation + 360) % 360;
+      }
+      rotation = InputImageRotationValue.fromRawValue(rotationCompensation);
+    }
+    return rotation ?? InputImageRotationValue.fromRawValue(sensorOrientation);
   }
 
   void dispose() {

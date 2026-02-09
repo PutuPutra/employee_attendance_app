@@ -18,27 +18,33 @@ class FaceDataService {
     }
 
     try {
-      // 1. Save image to local storage with a unique name
+      // 1. Save image to local storage with a random unique name
+      final timestamp = DateTime.now().millisecondsSinceEpoch;
+      final fileName = '${user.uid}_face_register_$timestamp.jpg';
       final directory = await getApplicationDocumentsDirectory();
-      final imagePath = '${directory.path}/${user.uid}_face_register.jpg';
+      final imagePath = '${directory.path}/$fileName';
       await imageFile.saveTo(imagePath);
 
-      // 2. Get the user's employeeId from Firestore
+      // 2. Get the user's employeeId and name from Firestore
       String? employeeId;
+      String? name;
       final userDoc = await _firestore.collection('users').doc(user.uid).get();
       if (userDoc.exists) {
-        employeeId = (userDoc.data() as Map<String, dynamic>)['employeeId'];
+        final data = userDoc.data() as Map<String, dynamic>;
+        employeeId = data['employeeId'];
+        name = data['username'] ?? user.displayName;
       }
 
       if (employeeId == null) {
         throw Exception('Employee ID not found for the current user.');
       }
 
-      // 3. Update the user document in Firestore with the image file name
-      await _firestore.collection('users').doc(user.uid).update({
-        'faceImagePath': '${user.uid}_face_register.jpg', // Save the file name
-        // The employeeId is already there, but this ensures the document is consistent
+      // 3. Save to face_register collection
+      await _firestore.collection('face_register').doc(user.uid).set({
         'employeeId': employeeId,
+        'name': name ?? 'Unknown',
+        'faceImagePath': fileName,
+        'registeredAt': FieldValue.serverTimestamp(),
       });
 
       return imagePath; // Return the local path on success

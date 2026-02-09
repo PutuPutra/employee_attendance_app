@@ -73,8 +73,16 @@ class _SavedFaceScreenState extends State<SavedFaceScreen> {
     if (user == null) return null;
 
     try {
+      final doc = await _firestore
+          .collection('face_register')
+          .doc(user.uid)
+          .get();
+      if (!doc.exists) return null;
+      final fileName = doc.data()?['faceImagePath'] as String?;
+      if (fileName == null) return null;
+
       final directory = await getApplicationDocumentsDirectory();
-      final path = '${directory.path}/${user.uid}_face_register.jpg';
+      final path = '${directory.path}/$fileName';
       final file = File(path);
       return await file.exists() ? file : null;
     } catch (e) {
@@ -93,19 +101,24 @@ class _SavedFaceScreenState extends State<SavedFaceScreen> {
 
     try {
       // 1. Delete the local image file
-      final directory = await getApplicationDocumentsDirectory();
-      final path = '${directory.path}/${user.uid}_face_register.jpg';
-      final file = File(path);
-
-      if (await file.exists()) {
-        await file.delete();
+      final doc = await _firestore
+          .collection('face_register')
+          .doc(user.uid)
+          .get();
+      if (doc.exists) {
+        final fileName = doc.data()?['faceImagePath'] as String?;
+        if (fileName != null) {
+          final directory = await getApplicationDocumentsDirectory();
+          final path = '${directory.path}/$fileName';
+          final file = File(path);
+          if (await file.exists()) {
+            await file.delete();
+          }
+        }
       }
 
-      // 2. Delete the fields from the Firestore document
-      await _firestore.collection('users').doc(user.uid).update({
-        'faceImageFileName': FieldValue.delete(),
-        'faceRegistrationTimestamp': FieldValue.delete(),
-      });
+      // 2. Delete the document from face_register collection
+      await _firestore.collection('face_register').doc(user.uid).delete();
 
       // 3. Refresh UI and show success message
       _loadImage(); // This will now correctly find no image
