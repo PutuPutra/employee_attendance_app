@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'login_screen.dart';
@@ -387,10 +388,21 @@ class _ProfileHeader extends StatelessWidget {
                 fontWeight: FontWeight.w600,
               ),
             ),
-            Text(
-              'ID: ${user?.uid.substring(0, 8) ?? '12345678'}',
-              style: const TextStyle(fontSize: 12, color: Colors.white70),
-            ),
+            if (user != null)
+              FutureBuilder<DocumentSnapshot>(
+                future: FirebaseFirestore.instance
+                    .collection('users')
+                    .doc(user.uid)
+                    .get(),
+                builder: (context, snapshot) {
+                  final data = snapshot.data?.data() as Map<String, dynamic>?;
+                  final employeeId = data?['employeeId'] ?? '...';
+                  return Text(
+                    'ID: $employeeId',
+                    style: const TextStyle(fontSize: 12, color: Colors.white70),
+                  );
+                },
+              ),
           ],
         ),
       ],

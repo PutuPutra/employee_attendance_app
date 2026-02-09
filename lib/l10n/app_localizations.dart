@@ -118,6 +118,11 @@ class AppLocalizations {
       _localizedValues[locale.languageCode]!['biometric_login_desc']!;
   String get changePassword =>
       _localizedValues[locale.languageCode]!['change_password']!;
+  String get account => _localizedValues[locale.languageCode]!['account']!;
+  String get editProfile =>
+      _localizedValues[locale.languageCode]!['edit_profile']!;
+  String get editProfileDesc =>
+      _localizedValues[locale.languageCode]!['edit_profile_desc']!;
 
   // Theme options
   String get themeSystem =>
@@ -151,6 +156,43 @@ class AppLocalizations {
   String get faceRecognitionNotImplemented =>
       _localizedValues[locale
           .languageCode]!['face_recognition_not_implemented']!;
+  String get imageSaved =>
+      _localizedValues[locale.languageCode]!['image_saved']!;
+  String get error => _localizedValues[locale.languageCode]!['error']!;
+  String get savingImage =>
+      _localizedValues[locale.languageCode]!['saving_image']!;
+  String get positionFaceInstruction =>
+      _localizedValues[locale.languageCode]!['position_face_instruction']!;
+  String get captureFace =>
+      _localizedValues[locale.languageCode]!['capture_face']!;
+  String get preparingCamera =>
+      _localizedValues[locale.languageCode]!['preparing_camera']!;
+
+  // Saved Face Screen
+  String get nameNotAvailable =>
+      _localizedValues[locale.languageCode]!['name_not_available']!;
+  String get idNotAvailable =>
+      _localizedValues[locale.languageCode]!['id_not_available']!;
+  String get failedToLoad =>
+      _localizedValues[locale.languageCode]!['failed_to_load']!;
+  String get faceDataDeleted =>
+      _localizedValues[locale.languageCode]!['face_data_deleted']!;
+  String get failedToDelete =>
+      _localizedValues[locale.languageCode]!['failed_to_delete']!;
+  String get deleteFaceData =>
+      _localizedValues[locale.languageCode]!['delete_face_data']!;
+  String get deleteFaceDataConfirm =>
+      _localizedValues[locale.languageCode]!['delete_face_data_confirm']!;
+  String get delete => _localizedValues[locale.languageCode]!['delete']!;
+  String get pleaseLoginToViewFaceData =>
+      _localizedValues[locale.languageCode]!['please_login_to_view_face_data']!;
+  String get faceProfile =>
+      _localizedValues[locale.languageCode]!['face_profile']!;
+  String get noFaceData =>
+      _localizedValues[locale.languageCode]!['no_face_data']!;
+  String get faceNotRegistered =>
+      _localizedValues[locale.languageCode]!['face_not_registered']!;
+  String get loading => _localizedValues[locale.languageCode]!['loading']!;
 
   // Face Scan Screen
   String get submit => _localizedValues[locale.languageCode]!['submit']!;
@@ -225,6 +267,9 @@ class AppLocalizations {
       'biometric_login': 'Biometric Login',
       'biometric_login_desc': 'Use fingerprint or face unlock',
       'change_password': 'Change Password',
+      'account': 'Account',
+      'edit_profile': 'Edit Profile',
+      'edit_profile_desc': 'Change your username and email',
 
       // Theme options
       'theme_system': 'System',
@@ -247,6 +292,29 @@ class AppLocalizations {
       'skip_for_now': 'Skip for now',
       'face_recognition_not_implemented':
           'Face recognition not implemented yet',
+      'image_saved': 'Image saved successfully',
+      'error': 'Error',
+      'saving_image': 'Saving image locally...',
+      'position_face_instruction':
+          'Position your face in the center and press the button.',
+      'capture_face': 'Capture Face',
+      'preparing_camera': 'Preparing camera...',
+
+      // Saved Face Screen
+      'name_not_available': 'Name not available',
+      'id_not_available': 'ID not available',
+      'failed_to_load': 'Failed to load',
+      'face_data_deleted': 'Face data deleted successfully.',
+      'failed_to_delete': 'Failed to delete data',
+      'delete_face_data': 'Delete Face Data',
+      'delete_face_data_confirm':
+          'Are you sure you want to delete this face data? This action cannot be undone.',
+      'delete': 'Delete',
+      'please_login_to_view_face_data': 'Please login to view face data.',
+      'face_profile': 'Face Profile',
+      'no_face_data': 'No Face Data',
+      'face_not_registered': 'Your face is not registered yet.',
+      'loading': 'Loading...',
 
       // Face Scan Screen
       'submit': 'Submit',
@@ -319,6 +387,9 @@ class AppLocalizations {
       'biometric_login': 'Login Biometrik',
       'biometric_login_desc': 'Gunakan sidik jari atau pengenalan wajah',
       'change_password': 'Ubah Kata Sandi',
+      'account': 'Akun',
+      'edit_profile': 'Edit Profil',
+      'edit_profile_desc': 'Ubah username dan email Anda',
 
       // Theme options
       'theme_system': 'Sistem',
@@ -341,6 +412,30 @@ class AppLocalizations {
       'skip_for_now': 'Lewati untuk sekarang',
       'face_recognition_not_implemented':
           'Pengenalan wajah belum diimplementasikan',
+      'image_saved': 'Gambar berhasil disimpan',
+      'error': 'Error',
+      'saving_image': 'Menyimpan gambar secara lokal...',
+      'position_face_instruction':
+          'Posisikan wajah Anda di tengah dan tekan tombol.',
+      'capture_face': 'Ambil Gambar Wajah',
+      'preparing_camera': 'Mempersiapkan kamera...',
+
+      // Saved Face Screen
+      'name_not_available': 'Nama tidak tersedia',
+      'id_not_available': 'ID tidak tersedia',
+      'failed_to_load': 'Gagal memuat',
+      'face_data_deleted': 'Data wajah berhasil dihapus.',
+      'failed_to_delete': 'Gagal menghapus data',
+      'delete_face_data': 'Hapus Data Wajah',
+      'delete_face_data_confirm':
+          'Anda yakin ingin menghapus data wajah ini? Tindakan ini tidak dapat dibatalkan.',
+      'delete': 'Hapus',
+      'please_login_to_view_face_data':
+          'Silakan login untuk melihat data wajah.',
+      'face_profile': 'Profil Wajah',
+      'no_face_data': 'Tidak Ada Data Wajah',
+      'face_not_registered': 'Wajah Anda belum terdaftar.',
+      'loading': 'Memuat...',
 
       // Face Scan Screen
       'submit': 'Kirim',

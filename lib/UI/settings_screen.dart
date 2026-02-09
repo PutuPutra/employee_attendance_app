@@ -8,6 +8,8 @@ import '../core/enums/theme_mode_option.dart';
 import '../core/enums/language_option.dart';
 import '../core/enums/font_option.dart';
 import '../l10n/app_localizations.dart';
+import './saved_face_screen.dart';
+import './account_settings_screen.dart'; // <-- DIIMPOR
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -34,12 +36,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
       ),
       body: BlocBuilder<SettingsBloc, SettingsState>(
         builder: (context, state) {
-          // Show loading indicator while settings are being loaded
           if (state is SettingsLoading) {
             return const Center(child: CircularProgressIndicator());
           }
 
-          // Show error message if there's an error
           if (state is SettingsError) {
             return Center(
               child: Text(
@@ -49,19 +49,44 @@ class _SettingsScreenState extends State<SettingsScreen> {
             );
           }
 
-          // Show settings UI when loaded
           if (state is SettingsLoaded) {
             final settings = state.settings;
 
             return ListView(
               children: [
+                // =========== BAGIAN AKUN BARU ===========
+                _sectionHeader(l10n.account),
+                _sectionCard([
+                  _iosTile(
+                    icon: CupertinoIcons.person_circle,
+                    title: l10n.editProfile,
+                    subtitle: l10n.editProfileDesc,
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const AccountSettingsScreen(),
+                        ),
+                      );
+                    },
+                  ),
+                ]),
+
+                // ========================================
                 _sectionHeader(l10n.faceRecognition),
                 _sectionCard([
                   _iosTile(
                     icon: CupertinoIcons.person,
                     title: l10n.savedFaces,
                     subtitle: l10n.manageFaceData,
-                    onTap: () {},
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const SavedFaceScreen(),
+                        ),
+                      );
+                    },
                   ),
                 ]),
 
@@ -107,14 +132,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
             );
           }
 
-          // Default empty state
           return const SizedBox.shrink();
         },
       ),
     );
   }
-
-  // ===== Helper Methods untuk Display Names =====
 
   String _getThemeDisplayName(ThemeModeOption theme, AppLocalizations l10n) {
     switch (theme) {
@@ -149,8 +171,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
         return l10n.fontAppDefault;
     }
   }
-
-  // ===== Picker Methods =====
 
   void _showThemePicker(
     BuildContext context,
@@ -255,8 +275,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
       ),
     );
   }
-
-  // ===== UI Components =====
 
   Widget _sectionHeader(String title) {
     return Padding(
