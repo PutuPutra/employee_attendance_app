@@ -45,6 +45,12 @@ class AppLocalizations {
       _localizedValues[locale.languageCode]!['please_enter_email_password']!;
   String get loginFailed =>
       _localizedValues[locale.languageCode]!['login_failed']!;
+  String get userNotFound =>
+      _localizedValues[locale.languageCode]!['user_not_found']!;
+  String get wrongPassword =>
+      _localizedValues[locale.languageCode]!['wrong_password']!;
+  String get userDisabled =>
+      _localizedValues[locale.languageCode]!['user_disabled']!;
 
   // Home Screen
   String get home => _localizedValues[locale.languageCode]!['home']!;
@@ -65,6 +71,10 @@ class AppLocalizations {
   String get logout => _localizedValues[locale.languageCode]!['logout']!;
   String get logoutConfirm =>
       _localizedValues[locale.languageCode]!['logout_confirm']!;
+  String get invalidDateRange =>
+      _localizedValues[locale.languageCode]!['invalid_date_range']!;
+  String get endDateBeforeStartDate =>
+      _localizedValues[locale.languageCode]!['end_date_before_start_date']!;
 
   // Days
   String get monday => _localizedValues[locale.languageCode]!['monday']!;
@@ -97,6 +107,8 @@ class AppLocalizations {
       _localizedValues[locale.languageCode]!['reset_failed']!;
   String get backToLogin =>
       _localizedValues[locale.languageCode]!['back_to_login']!;
+  String get invalidEmailFormat =>
+      _localizedValues[locale.languageCode]!['invalid_email_format']!;
 
   // Settings Screen
   String get settings => _localizedValues[locale.languageCode]!['settings']!;
@@ -215,6 +227,15 @@ class AppLocalizations {
   String get locationUnknown =>
       _localizedValues[locale.languageCode]!['location_unknown']!;
 
+  // Attendance Warning
+  String get earlyAttendance =>
+      _localizedValues[locale.languageCode]!['early_attendance']!;
+  String get notYetTime =>
+      _localizedValues[locale.languageCode]!['not_yet_time']!;
+  String get wantToProceed =>
+      _localizedValues[locale.languageCode]!['want_to_proceed']!;
+  String get proceed => _localizedValues[locale.languageCode]!['proceed']!;
+
   // ===== Localized Values Map =====
   static const Map<String, Map<String, String>> _localizedValues = {
     'en': {
@@ -232,6 +253,9 @@ class AppLocalizations {
       'forgot_password': 'Forgot Password?',
       'please_enter_email_password': 'Please enter email and password',
       'login_failed': 'Login failed',
+      'user_not_found': 'No user found for that email',
+      'wrong_password': 'Wrong password provided',
+      'user_disabled': 'User account is disabled',
 
       // Home Screen
       'home': 'Home',
@@ -247,6 +271,9 @@ class AppLocalizations {
       'end': 'End',
       'logout': 'Logout',
       'logout_confirm': 'Are you sure you want to logout?',
+      'invalid_date_range': 'Invalid Date Range',
+      'end_date_before_start_date':
+          'End date cannot be earlier than start date',
 
       // Days
       'monday': 'Monday',
@@ -271,6 +298,7 @@ class AppLocalizations {
       'reset_link_sent': 'Reset link sent to your email',
       'reset_failed': 'Failed to send reset link',
       'back_to_login': 'Back to Login',
+      'invalid_email_format': 'The email address is badly formatted',
 
       // Settings
       'settings': 'Settings',
@@ -346,6 +374,12 @@ class AppLocalizations {
       'location_not_found': 'Location not found',
       'searching_location': 'Searching location...',
       'location_unknown': 'Location status unknown.',
+
+      // Attendance Warning
+      'early_attendance': 'Early Attendance',
+      'not_yet_time': 'It is not yet time for',
+      'want_to_proceed': 'Do you want to proceed?',
+      'proceed': 'Proceed',
     },
     'id': {
       // Common
@@ -362,6 +396,9 @@ class AppLocalizations {
       'forgot_password': 'Lupa Kata Sandi?',
       'please_enter_email_password': 'Silakan masukkan email dan kata sandi',
       'login_failed': 'Login gagal',
+      'user_not_found': 'Pengguna tidak ditemukan',
+      'wrong_password': 'Kata sandi salah',
+      'user_disabled': 'Akun dinonaktifkan',
 
       // Home Screen
       'home': 'Beranda',
@@ -377,6 +414,9 @@ class AppLocalizations {
       'end': 'Akhir',
       'logout': 'Keluar',
       'logout_confirm': 'Yakin ingin keluar?',
+      'invalid_date_range': 'Rentang Tanggal Salah',
+      'end_date_before_start_date':
+          'Tanggal akhir tidak boleh lebih awal dari tanggal mulai',
 
       // Days
       'monday': 'Senin',
@@ -401,6 +441,7 @@ class AppLocalizations {
       'reset_link_sent': 'Link reset telah dikirim ke email Anda',
       'reset_failed': 'Gagal mengirim link reset',
       'back_to_login': 'Kembali ke Login',
+      'invalid_email_format': 'Format email tidak valid',
 
       // Settings
       'settings': 'Pengaturan',
@@ -477,6 +518,12 @@ class AppLocalizations {
       'location_not_found': 'Lokasi belum ditemukan',
       'searching_location': 'Mencari lokasi...',
       'location_unknown': 'Status lokasi tidak diketahui.',
+
+      // Attendance Warning
+      'early_attendance': 'Absensi Lebih Awal',
+      'not_yet_time': 'Belum waktunya untuk',
+      'want_to_proceed': 'Apakah Anda ingin melanjutkan?',
+      'proceed': 'Lanjutkan',
     },
   };
 }

@@ -1,15 +1,23 @@
 part of 'attendance_bloc.dart';
 
-@immutable
-sealed class AttendanceState {}
+abstract class AttendanceState extends Equatable {
+  const AttendanceState();
 
-final class AttendanceInitial extends AttendanceState {}
+  @override
+  List<Object> get props => [];
+}
 
-final class AttendanceLoading extends AttendanceState {}
+class AttendanceInitial extends AttendanceState {}
 
-final class AttendanceSuccess extends AttendanceState {}
+class AttendanceLoading extends AttendanceState {}
 
-final class AttendanceFailure extends AttendanceState {
+class AttendanceSuccess extends AttendanceState {}
+
+class AttendanceFailure extends AttendanceState {
   final String error;
-  AttendanceFailure(this.error);
+
+  const AttendanceFailure({required this.error});
+
+  @override
+  List<Object> get props => [error];
 }

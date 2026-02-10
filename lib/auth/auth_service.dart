@@ -41,4 +41,16 @@ class AuthService {
   Future<void> updateUsername({required String username}) async {
     await currentUser!.updateDisplayName(username);
   }
+
+  Future<void> changePassword({
+    required String newPassword,
+    required String confirmPassword,
+  }) async {
+    AuthCredential credential = EmailAuthProvider.credential(
+      email: currentUser!.email!,
+      password: newPassword,
+    );
+    await currentUser!.reauthenticateWithCredential(credential);
+    await currentUser!.updatePassword(confirmPassword);
+  }
 }

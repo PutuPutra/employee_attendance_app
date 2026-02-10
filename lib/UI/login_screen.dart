@@ -1,5 +1,6 @@
 import 'dart:ui';
 import 'package:animate_do/animate_do.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'home_screen.dart';
 import 'reset_password.dart';
@@ -18,6 +19,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final TextEditingController _passwordController = TextEditingController();
 
   bool _isLoading = false;
+  bool _isPasswordVisible = false;
 
   Future<void> _login() async {
     final l10n = AppLocalizations.of(context);
@@ -41,6 +43,22 @@ class _LoginScreenState extends State<LoginScreen> {
           MaterialPageRoute(builder: (_) => const HomeScreen()),
         );
       }
+    } on FirebaseAuthException catch (e) {
+      if (mounted) {
+        String message = l10n.loginFailed;
+        if (e.code == 'user-not-found') {
+          message = l10n.userNotFound;
+        } else if (e.code == 'wrong-password') {
+          message = l10n.wrongPassword;
+        } else if (e.code == 'invalid-email') {
+          message = l10n.invalidEmailFormat;
+        } else if (e.code == 'user-disabled') {
+          message = l10n.userDisabled;
+        }
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(message)));
+      }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(
@@ -54,7 +72,12 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
-  InputDecoration _iosInput(String hint, IconData icon, bool isDark) {
+  InputDecoration _iosInput(
+    String hint,
+    IconData icon,
+    bool isDark, {
+    Widget? suffixIcon,
+  }) {
     return InputDecoration(
       hintText: hint,
       prefixIcon: Icon(icon, color: Colors.blue.shade800),
@@ -67,6 +90,7 @@ class _LoginScreenState extends State<LoginScreen> {
         borderRadius: BorderRadius.circular(18),
         borderSide: BorderSide.none,
       ),
+      suffixIcon: suffixIcon,
     );
   }
 
@@ -174,11 +198,25 @@ class _LoginScreenState extends State<LoginScreen> {
                               const SizedBox(height: 18),
                               TextField(
                                 controller: _passwordController,
-                                obscureText: true,
+                                obscureText: !_isPasswordVisible,
                                 decoration: _iosInput(
                                   l10n.password,
                                   Icons.lock,
                                   isDark,
+                                  suffixIcon: IconButton(
+                                    icon: Icon(
+                                      _isPasswordVisible
+                                          ? Icons.visibility
+                                          : Icons.visibility_off,
+                                      color: Colors.grey,
+                                    ),
+                                    onPressed: () {
+                                      setState(
+                                        () => _isPasswordVisible =
+                                            !_isPasswordVisible,
+                                      );
+                                    },
+                                  ),
                                 ),
                                 style: TextStyle(
                                   color: isDark ? Colors.black : null,

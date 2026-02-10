@@ -1,3 +1,4 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import '../auth/auth_service.dart';
 import '../l10n/app_localizations.dart';
@@ -33,6 +34,16 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
           context,
         ).showSnackBar(SnackBar(content: Text(l10n.resetLinkSent)));
         Navigator.pop(context);
+      }
+    } on FirebaseAuthException catch (e) {
+      if (mounted) {
+        String message = l10n.resetFailed;
+        if (e.code == 'invalid-email') {
+          message = l10n.invalidEmailFormat;
+        }
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(message)));
       }
     } catch (e) {
       if (mounted) {

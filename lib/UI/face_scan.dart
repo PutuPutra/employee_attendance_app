@@ -15,7 +15,10 @@ import 'package:url_launcher/url_launcher.dart';
 import '../l10n/app_localizations.dart';
 
 class FaceScanScreen extends StatelessWidget {
-  const FaceScanScreen({super.key});
+  final String
+  attendanceType; // 'checkIn', 'breakStart', 'breakEnd', 'checkOut'
+
+  const FaceScanScreen({super.key, required this.attendanceType});
 
   @override
   Widget build(BuildContext context) {
@@ -25,15 +28,19 @@ class FaceScanScreen extends StatelessWidget {
         BlocProvider(
           create: (context) => FaceRecognitionBloc()..add(LoadRegisteredFace()),
         ),
-        BlocProvider(create: (context) => AttendanceBloc()),
+        BlocProvider(
+          create: (context) => AttendanceBloc(),
+        ), // Pastikan AttendanceBloc bisa handle logic baru
       ],
-      child: const FaceScanView(),
+      child: FaceScanView(attendanceType: attendanceType),
     );
   }
 }
 
 class FaceScanView extends StatefulWidget {
-  const FaceScanView({super.key});
+  final String attendanceType;
+
+  const FaceScanView({super.key, required this.attendanceType});
 
   @override
   State<FaceScanView> createState() => _FaceScanViewState();
@@ -44,6 +51,7 @@ class _FaceScanViewState extends State<FaceScanView> {
   String _currentDate = '';
   String _name = '';
   String _id = '';
+  String _region = '';
   bool _isLoadingId = true;
   final CameraService _cameraService = CameraService();
   bool _isCameraInitialized = false;
@@ -110,6 +118,7 @@ class _FaceScanViewState extends State<FaceScanView> {
       setState(() {
         final data = doc.data();
         _id = data?['employeeId']?.toString() ?? '';
+        _region = data?['region']?.toString() ?? '';
         _isLoadingId = false;
       });
     }
@@ -309,6 +318,9 @@ class _FaceScanViewState extends State<FaceScanView> {
                                               locationState.position.latitude,
                                           longitude:
                                               locationState.position.longitude,
+                                          attendanceType: widget
+                                              .attendanceType, // Kirim tipe absensi
+                                          region: _region,
                                         ),
                                       );
                                     }

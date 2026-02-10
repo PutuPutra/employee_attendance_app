@@ -22,6 +22,50 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
   String? _employeeId;
   bool _isLoading = true;
   bool _isSaving = false;
+  String? _selectedRegion;
+  String? _selectedLokasi;
+
+  final List<String> _regionOptions = [
+    'Cilegon',
+    'Head Office',
+    'Sanggau',
+    'Sintang',
+    'Palangkaraya',
+  ];
+
+  final List<String> _lokasiOptions = [
+    'PT. ASL TIMUR',
+    'PT. ACP',
+    'PT. MSP TIMUR',
+    'PT. MSP BARAT',
+    'PT. APN',
+    'PT. Arvena Sepakat',
+    'PT. MJP 1',
+    'PT. SJAL TAYAN',
+    'PT. SJAL TAYAN POM',
+    'PT. SJAL TOBA POM',
+    'PT. SJAL MELIAU',
+    'PT. SJAL BARAT',
+    'PT. SJAL TIMUR',
+    'PT. MJP 2',
+    'PT. MJP 3',
+    'PT. MJP POM',
+    'PT. SURYA DELI 1',
+    'PT. SURYA DELI 2',
+    'PT. SML BARAT',
+    'PT. SML TIMUR',
+    'PT. SML POM',
+    'PT. ASL BARAT',
+    'PT. ASL POM',
+    'PT. BSL',
+    'PT. BTN',
+    'PT. BTN POM',
+    'PT. MAL',
+    'PT. MSP SINTANG',
+    'PT. SML SINTANG',
+    'PT. SML TIMUR UNIT APD',
+    'PT. SJAL TAYAN PROJECT',
+  ];
 
   @override
   void initState() {
@@ -49,6 +93,8 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
       String email =
           user.email ?? ''; // Directly get email from the logged-in user
       String? employeeId;
+      String region = '';
+      String lokasi = '';
 
       // Then, try to load more specific data from Firestore.
       DocumentSnapshot userDoc = await _firestore
@@ -65,11 +111,19 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
             ''; // Use Firestore username if available
         email = data['email'] ?? email; // Use Firestore email if available
         employeeId = data['employeeId'];
+        region = data['region'] ?? '';
+        lokasi = data['lokasi'] ?? '';
       }
 
       // Set the controller values.
       _usernameController.text = username;
       _emailController.text = email;
+      if (_regionOptions.contains(region)) {
+        _selectedRegion = region;
+      }
+      if (_lokasiOptions.contains(lokasi)) {
+        _selectedLokasi = lokasi;
+      }
 
       // Finally, generate an Employee ID if it doesn't exist yet.
       if (employeeId == null || employeeId.isEmpty) {
@@ -116,6 +170,8 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
         'username': _usernameController.text,
         'email': _emailController.text,
         'employeeId': _employeeId,
+        'region': _selectedRegion,
+        'lokasi': _selectedLokasi,
       };
 
       // Save data to Firestore
@@ -197,6 +253,60 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
                       validator: (value) =>
                           value == null || !value.contains('@')
                           ? 'Masukkan alamat email yang valid'
+                          : null,
+                    ),
+                    const SizedBox(height: 16),
+
+                    DropdownButtonFormField<String>(
+                      value: _selectedRegion,
+                      decoration: InputDecoration(
+                        labelText: 'Region / Wilayah',
+                        prefixIcon: const Icon(
+                          CupertinoIcons.location,
+                          size: 20,
+                        ),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        filled: true,
+                      ),
+                      items: _regionOptions.map((String value) {
+                        return DropdownMenuItem<String>(
+                          value: value,
+                          child: Text(value),
+                        );
+                      }).toList(),
+                      onChanged: (newValue) =>
+                          setState(() => _selectedRegion = newValue),
+                      validator: (value) => value == null || value.isEmpty
+                          ? 'Region tidak boleh kosong'
+                          : null,
+                    ),
+                    const SizedBox(height: 16),
+
+                    DropdownButtonFormField<String>(
+                      value: _selectedLokasi,
+                      decoration: InputDecoration(
+                        labelText: 'Lokasi / PT',
+                        prefixIcon: const Icon(
+                          CupertinoIcons.building_2_fill,
+                          size: 20,
+                        ),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        filled: true,
+                      ),
+                      items: _lokasiOptions.map((String value) {
+                        return DropdownMenuItem<String>(
+                          value: value,
+                          child: Text(value),
+                        );
+                      }).toList(),
+                      onChanged: (newValue) =>
+                          setState(() => _selectedLokasi = newValue),
+                      validator: (value) => value == null || value.isEmpty
+                          ? 'Lokasi tidak boleh kosong'
                           : null,
                     ),
                     const SizedBox(height: 40),
