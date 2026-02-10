@@ -13,7 +13,7 @@ class FaceDetectionService {
       options: FaceDetectorOptions(
         performanceMode: FaceDetectorMode.fast,
         enableContours: false,
-        enableClassification: false,
+        enableClassification: true, // Aktifkan ini untuk deteksi kedipan mata
       ),
     );
   }

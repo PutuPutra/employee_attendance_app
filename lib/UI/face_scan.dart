@@ -44,6 +44,7 @@ class _FaceScanViewState extends State<FaceScanView> {
   String _currentDate = '';
   String _name = '';
   String _id = '';
+  bool _isLoadingId = true;
   final CameraService _cameraService = CameraService();
   bool _isCameraInitialized = false;
   int _lastFrameTime = 0; // Untuk throttling
@@ -95,18 +96,21 @@ class _FaceScanViewState extends State<FaceScanView> {
     final user = authService.value.currentUser;
     if (user == null) return;
 
+    // Jangan set text hardcode di sini, gunakan flag loading
     setState(() {
       _name = user.displayName ?? 'Unknown';
-      _id = 'Memuat ID...';
+      _isLoadingId = true;
     });
 
     final doc = await FirebaseFirestore.instance
         .collection('users')
         .doc(user.uid)
         .get();
-    if (mounted && doc.exists) {
+    if (mounted) {
       setState(() {
-        _id = doc.data()?['employeeId'] ?? 'N/A';
+        final data = doc.data();
+        _id = data?['employeeId']?.toString() ?? '';
+        _isLoadingId = false;
       });
     }
   }
@@ -121,6 +125,7 @@ class _FaceScanViewState extends State<FaceScanView> {
   }
 
   Future<void> _openMap(Position position) async {
+    final l10n = AppLocalizations.of(context);
     final lat = position.latitude;
     final long = position.longitude;
     final url = Uri.parse(
@@ -128,9 +133,9 @@ class _FaceScanViewState extends State<FaceScanView> {
     );
     if (!await launchUrl(url, mode: LaunchMode.externalApplication)) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Tidak dapat membuka peta.')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(l10n.cannotOpenMap)));
       }
     }
   }
@@ -159,8 +164,8 @@ class _FaceScanViewState extends State<FaceScanView> {
       listener: (context, state) {
         if (state is AttendanceSuccess) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Absensi berhasil dikirim!'),
+            SnackBar(
+              content: Text(l10n.attendanceSuccess),
               backgroundColor: Colors.green,
             ),
           );
@@ -168,7 +173,7 @@ class _FaceScanViewState extends State<FaceScanView> {
         } else if (state is AttendanceFailure) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('Gagal mengirim absensi: ${state.error}'),
+              content: Text('${l10n.attendanceFailed} ${state.error}'),
               backgroundColor: Colors.red,
             ),
           );
@@ -238,7 +243,8 @@ class _FaceScanViewState extends State<FaceScanView> {
                   _buildInfoRow(
                     context,
                     icon: Icons.person,
-                    text: '$_id - $_name',
+                    text:
+                        '${_isLoadingId ? l10n.loadingId : (_id.isEmpty ? l10n.notAvailable : _id)} - ${_name == 'Unknown' ? l10n.unknown : _name}',
                   ),
                   const SizedBox(height: 10),
                   _buildInfoRow(
@@ -258,6 +264,16 @@ class _FaceScanViewState extends State<FaceScanView> {
                           final isSubmitting =
                               attendanceState is AttendanceLoading;
 
+                          // Teks tombol dinamis
+                          String buttonText;
+                          if (isMatched) {
+                            buttonText = l10n.submit;
+                          } else {
+                            // Jika belum match, beri hint untuk berkedip
+                            // (Asumsi: jika wajah terdeteksi tapi belum match, mungkin karena belum blink)
+                            buttonText = l10n.faceNotMatchBlink;
+                          }
+
                           return ElevatedButton(
                             onPressed: (isMatched && !isSubmitting)
                                 ? () async {
@@ -269,10 +285,8 @@ class _FaceScanViewState extends State<FaceScanView> {
                                       ScaffoldMessenger.of(
                                         context,
                                       ).showSnackBar(
-                                        const SnackBar(
-                                          content: Text(
-                                            'Lokasi belum ditemukan',
-                                          ),
+                                        SnackBar(
+                                          content: Text(l10n.locationNotFound),
                                         ),
                                       );
                                       return;
@@ -314,9 +328,7 @@ class _FaceScanViewState extends State<FaceScanView> {
                                     color: Colors.white,
                                   )
                                 : Text(
-                                    isMatched
-                                        ? l10n.submit
-                                        : 'Wajah Tidak Cocok',
+                                    buttonText,
                                     style: const TextStyle(color: Colors.white),
                                   ),
                           );
@@ -359,19 +371,20 @@ class _FaceScanViewState extends State<FaceScanView> {
   }
 
   Widget _buildLocationSection() {
+    final l10n = AppLocalizations.of(context);
     return BlocBuilder<LocationBloc, LocationState>(
       builder: (context, state) {
         Widget content;
         Function()? onTap;
 
         if (state is LocationLoading || state is LocationInitial) {
-          content = const Row(
+          content = Row(
             children: [
-              Icon(Icons.location_on, color: Colors.blueAccent, size: 20),
-              SizedBox(width: 10),
-              Text('Mencari lokasi...'),
-              SizedBox(width: 10),
-              CupertinoActivityIndicator(radius: 10),
+              const Icon(Icons.location_on, color: Colors.blueAccent, size: 20),
+              const SizedBox(width: 10),
+              Text(l10n.searchingLocation),
+              const SizedBox(width: 10),
+              const CupertinoActivityIndicator(radius: 10),
             ],
           );
         } else if (state is LocationSuccess) {
@@ -391,7 +404,7 @@ class _FaceScanViewState extends State<FaceScanView> {
           content = _buildInfoRow(
             context,
             icon: Icons.location_off,
-            text: 'Status lokasi tidak diketahui.',
+            text: l10n.locationUnknown,
           );
         }
 

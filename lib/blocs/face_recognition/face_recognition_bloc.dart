@@ -22,6 +22,10 @@ class FaceRecognitionBloc
   List<double>? _registeredEmbedding;
   bool _isProcessing = false;
 
+  // Variabel untuk Liveness Detection (Kedipan)
+  int? _currentTrackingId;
+  bool _hasBlinked = false;
+
   FaceRecognitionBloc() : super(FaceRecognitionInitial()) {
     _detectionService.initialize();
     on<LoadRegisteredFace>(_onLoadRegisteredFace);
@@ -110,6 +114,22 @@ class FaceRecognitionBloc
       );
 
       if (face != null) {
+        // --- LIVENESS DETECTION (BLINK CHECK) ---
+        // Reset status jika wajah berganti (trackingId berubah)
+        if (face.trackingId != _currentTrackingId) {
+          _currentTrackingId = face.trackingId;
+          _hasBlinked = false;
+        }
+
+        // Deteksi mata tertutup (Probabilitas < 0.1 atau 10%)
+        // enableClassification harus true di FaceDetectionService
+        if ((face.leftEyeOpenProbability ?? 1.0) < 0.1 &&
+            (face.rightEyeOpenProbability ?? 1.0) < 0.1) {
+          _hasBlinked = true;
+          debugPrint("Liveness: Blink Detected! (Eyes Closed)");
+        }
+        // ----------------------------------------
+
         debugPrint("Face detected! Generating embedding..."); // DEBUG LOG
 
         // 2. Generate Embedding dari kamera (TFLite)
@@ -126,7 +146,14 @@ class FaceRecognitionBloc
         );
 
         if (isMatch) {
-          if (state is! FaceMatched) emit(FaceMatched(0.95));
+          // HANYA valid jika sudah berkedip DAN mata sekarang terbuka
+          if (_hasBlinked && (face.leftEyeOpenProbability ?? 0.0) > 0.5) {
+            if (state is! FaceMatched) emit(FaceMatched(0.95));
+          } else {
+            // Wajah cocok tapi belum berkedip -> Tetap NotMatched
+            debugPrint("Liveness: Face matched but waiting for blink...");
+            if (state is! FaceNotMatched) emit(FaceNotMatched());
+          }
         } else {
           if (state is! FaceNotMatched) emit(FaceNotMatched());
         }

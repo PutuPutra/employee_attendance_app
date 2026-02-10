@@ -196,6 +196,24 @@ class AppLocalizations {
 
   // Face Scan Screen
   String get submit => _localizedValues[locale.languageCode]!['submit']!;
+  String get cannotOpenMap =>
+      _localizedValues[locale.languageCode]!['cannot_open_map']!;
+  String get attendanceSuccess =>
+      _localizedValues[locale.languageCode]!['attendance_success']!;
+  String get attendanceFailed =>
+      _localizedValues[locale.languageCode]!['attendance_failed']!;
+  String get loadingId => _localizedValues[locale.languageCode]!['loading_id']!;
+  String get notAvailable =>
+      _localizedValues[locale.languageCode]!['not_available']!;
+  String get unknown => _localizedValues[locale.languageCode]!['unknown']!;
+  String get faceNotMatchBlink =>
+      _localizedValues[locale.languageCode]!['face_not_match_blink']!;
+  String get locationNotFound =>
+      _localizedValues[locale.languageCode]!['location_not_found']!;
+  String get searchingLocation =>
+      _localizedValues[locale.languageCode]!['searching_location']!;
+  String get locationUnknown =>
+      _localizedValues[locale.languageCode]!['location_unknown']!;
 
   // ===== Localized Values Map =====
   static const Map<String, Map<String, String>> _localizedValues = {
@@ -240,10 +258,10 @@ class AppLocalizations {
       'sunday': 'Sunday',
 
       // Time labels
-      'entry': 'Entry',
+      'entry': 'Check In',
       'break_time': 'Break',
       'return_time': 'Return',
-      'exit': 'Exit',
+      'exit': 'Check Out',
 
       // Reset Password
       'reset_password': 'Reset Password',
@@ -318,6 +336,16 @@ class AppLocalizations {
 
       // Face Scan Screen
       'submit': 'Submit',
+      'cannot_open_map': 'Cannot open map.',
+      'attendance_success': 'Attendance submitted successfully!',
+      'attendance_failed': 'Failed to submit attendance:',
+      'loading_id': 'Loading ID...',
+      'not_available': 'N/A',
+      'unknown': 'Unknown',
+      'face_not_match_blink': 'Face Not Matched / Please Blink 😉',
+      'location_not_found': 'Location not found',
+      'searching_location': 'Searching location...',
+      'location_unknown': 'Location status unknown.',
     },
     'id': {
       // Common
@@ -439,6 +467,16 @@ class AppLocalizations {
 
       // Face Scan Screen
       'submit': 'Kirim',
+      'cannot_open_map': 'Tidak dapat membuka peta.',
+      'attendance_success': 'Absensi berhasil dikirim!',
+      'attendance_failed': 'Gagal mengirim absensi:',
+      'loading_id': 'Memuat ID...',
+      'not_available': 'T/A',
+      'unknown': 'Tidak Diketahui',
+      'face_not_match_blink': 'Wajah Tidak Cocok / Silakan Berkedip 😉',
+      'location_not_found': 'Lokasi belum ditemukan',
+      'searching_location': 'Mencari lokasi...',
+      'location_unknown': 'Status lokasi tidak diketahui.',
     },
   };
 }
