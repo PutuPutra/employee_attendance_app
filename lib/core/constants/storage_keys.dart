@@ -18,4 +18,13 @@ class StorageKeys {
   /// Key untuk menyimpan status first launch
   /// Digunakan untuk mendeteksi apakah ini pertama kali app dibuka
   static const String isFirstLaunch = 'is_first_launch';
+
+  /// Key untuk menyimpan status login biometrik
+  static const String isBiometricEnabled = 'is_biometric_enabled';
+
+  /// Key untuk menyimpan email terakhir (untuk login biometrik)
+  static const String savedEmail = 'saved_email';
+
+  /// Key untuk menyimpan password terakhir (untuk login biometrik)
+  static const String savedPassword = 'saved_password';
 }

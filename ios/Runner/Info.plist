@@ -3,7 +3,7 @@
 <plist version="1.0">
 	<dict>
 		<key>NSFaceIDUsageDescription</key>
-		<string>Why is my app authenticating using face id?</string>
+		<string>App ini butuh Face ID buat login aman.</string>
 		<key>NSLocationWhenInUseUsageDescription</key>
 		<string>Aplikasi ini memerlukan akses lokasi untuk mencatat kehadiran Anda di tempat yang benar.</string>
 		<key>NSLocationAlwaysUsageDescription</key>

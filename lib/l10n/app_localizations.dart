@@ -109,6 +109,29 @@ class AppLocalizations {
       _localizedValues[locale.languageCode]!['back_to_login']!;
   String get invalidEmailFormat =>
       _localizedValues[locale.languageCode]!['invalid_email_format']!;
+  String get accessRestricted =>
+      _localizedValues[locale.languageCode]!['access_restricted']!;
+  String get resetCooldownMessage =>
+      _localizedValues[locale.languageCode]!['reset_cooldown_message']!;
+  String get newPassword =>
+      _localizedValues[locale.languageCode]!['new_password']!;
+  String get confirmNewPassword =>
+      _localizedValues[locale.languageCode]!['confirm_new_password']!;
+  String get updatePassword =>
+      _localizedValues[locale.languageCode]!['update_password']!;
+  String get attention => _localizedValues[locale.languageCode]!['attention']!;
+  String get fillAllFields =>
+      _localizedValues[locale.languageCode]!['fill_all_fields']!;
+  String get passwordMismatch =>
+      _localizedValues[locale.languageCode]!['password_mismatch']!;
+  String get emailNotRegistered =>
+      _localizedValues[locale.languageCode]!['email_not_registered']!;
+  String get success => _localizedValues[locale.languageCode]!['success']!;
+  String get passwordChangedSuccess =>
+      _localizedValues[locale.languageCode]!['password_changed_success']!;
+  String get occurredError =>
+      _localizedValues[locale.languageCode]!['occurred_error']!;
+  String get failed => _localizedValues[locale.languageCode]!['failed']!;
 
   // Settings Screen
   String get settings => _localizedValues[locale.languageCode]!['settings']!;
@@ -299,6 +322,20 @@ class AppLocalizations {
       'reset_failed': 'Failed to send reset link',
       'back_to_login': 'Back to Login',
       'invalid_email_format': 'The email address is badly formatted',
+      'access_restricted': 'Access Restricted',
+      'reset_cooldown_message':
+          'You have already reset your password. Please try again in:',
+      'new_password': 'New Password',
+      'confirm_new_password': 'Confirm New Password',
+      'update_password': 'Update Password',
+      'attention': 'Attention',
+      'fill_all_fields': 'Please fill all fields',
+      'password_mismatch': 'Passwords do not match',
+      'email_not_registered': 'Email address not found',
+      'success': 'Success',
+      'password_changed_success': 'Password changed successfully.',
+      'occurred_error': 'An error occurred',
+      'failed': 'Failed',
 
       // Settings
       'settings': 'Settings',
@@ -442,6 +479,20 @@ class AppLocalizations {
       'reset_failed': 'Gagal mengirim link reset',
       'back_to_login': 'Kembali ke Login',
       'invalid_email_format': 'Format email tidak valid',
+      'access_restricted': 'Akses Dibatasi',
+      'reset_cooldown_message':
+          'Anda sudah melakukan reset password. Silakan coba lagi dalam:',
+      'new_password': 'Password Baru',
+      'confirm_new_password': 'Konfirmasi Password Baru',
+      'update_password': 'Update Password',
+      'attention': 'Perhatian',
+      'fill_all_fields': 'Mohon isi semua kolom',
+      'password_mismatch': 'Password tidak cocok',
+      'email_not_registered': 'Email tidak terdaftar di database.',
+      'success': 'Sukses',
+      'password_changed_success': 'Password berhasil diubah.',
+      'occurred_error': 'Terjadi kesalahan',
+      'failed': 'Gagal',
 
       // Settings
       'settings': 'Pengaturan',

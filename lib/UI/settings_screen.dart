@@ -1,6 +1,10 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import '../core/constants/storage_keys.dart';
+import '../services/biometric_service.dart';
+import '../auth/auth_service.dart';
 import '../blocs/settings/settings_bloc.dart';
 import '../blocs/settings/settings_event.dart';
 import '../blocs/settings/settings_state.dart';
@@ -20,6 +24,222 @@ class SettingsScreen extends StatefulWidget {
 
 class _SettingsScreenState extends State<SettingsScreen> {
   bool _biometricLogin = false;
+  final BiometricService _biometricService = BiometricService();
+
+  @override
+  void initState() {
+    super.initState();
+    _loadBiometricSettings();
+  }
+
+  Future<void> _loadBiometricSettings() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (mounted) {
+      setState(() {
+        _biometricLogin =
+            prefs.getBool(StorageKeys.isBiometricEnabled) ?? false;
+      });
+    }
+  }
+
+  Future<void> _toggleBiometric(bool value) async {
+    if (value) {
+      // Cek ketersediaan & Autentikasi sebelum mengaktifkan
+      final isAvailable = await _biometricService.isBiometricAvailable();
+      if (!isAvailable) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Biometrik tidak tersedia di perangkat ini.'),
+            ),
+          );
+        }
+        return;
+      }
+
+      try {
+        final authenticated = await _biometricService.authenticate();
+        if (!authenticated) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Autentikasi biometrik dibatalkan atau gagal.'),
+              ),
+            );
+          }
+          return; // Batal jika gagal auth
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text(e.toString())));
+        }
+        return;
+      }
+    }
+
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(StorageKeys.isBiometricEnabled, value);
+    if (mounted) setState(() => _biometricLogin = value);
+  }
+
+  void _showChangePasswordDialog(BuildContext context) {
+    final newPasswordController = TextEditingController();
+    final confirmPasswordController = TextEditingController();
+    final l10n = AppLocalizations.of(context);
+    bool isObscureNew = true;
+    bool isObscureConfirm = true;
+    bool isLoading = false;
+
+    showCupertinoDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return CupertinoAlertDialog(
+              title: Text(l10n.changePassword),
+              content: Column(
+                children: [
+                  const SizedBox(height: 16),
+                  CupertinoTextField(
+                    controller: newPasswordController,
+                    obscureText: isObscureNew,
+                    placeholder: 'Password Baru',
+                    padding: const EdgeInsets.all(12),
+                    suffix: GestureDetector(
+                      onTap: () {
+                        setState(() {
+                          isObscureNew = !isObscureNew;
+                        });
+                      },
+                      child: Padding(
+                        padding: const EdgeInsets.only(right: 8.0),
+                        child: Icon(
+                          isObscureNew
+                              ? CupertinoIcons.eye
+                              : CupertinoIcons.eye_slash,
+                          size: 20,
+                          color: CupertinoColors.systemGrey,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  CupertinoTextField(
+                    controller: confirmPasswordController,
+                    obscureText: isObscureConfirm,
+                    placeholder: 'Konfirmasi Password Baru',
+                    padding: const EdgeInsets.all(12),
+                    suffix: GestureDetector(
+                      onTap: () {
+                        setState(() {
+                          isObscureConfirm = !isObscureConfirm;
+                        });
+                      },
+                      child: Padding(
+                        padding: const EdgeInsets.only(right: 8.0),
+                        child: Icon(
+                          isObscureConfirm
+                              ? CupertinoIcons.eye
+                              : CupertinoIcons.eye_slash,
+                          size: 20,
+                          color: CupertinoColors.systemGrey,
+                        ),
+                      ),
+                    ),
+                  ),
+                  if (isLoading) ...[
+                    const SizedBox(height: 16),
+                    const CupertinoActivityIndicator(),
+                  ],
+                ],
+              ),
+              actions: [
+                CupertinoDialogAction(
+                  onPressed: isLoading ? null : () => Navigator.pop(context),
+                  child: Text(l10n.cancel),
+                ),
+                CupertinoDialogAction(
+                  isDefaultAction: true,
+                  onPressed: isLoading
+                      ? null
+                      : () async {
+                          if (newPasswordController.text.isEmpty ||
+                              confirmPasswordController.text.isEmpty) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Mohon isi semua kolom'),
+                              ),
+                            );
+                            return;
+                          }
+
+                          if (newPasswordController.text !=
+                              confirmPasswordController.text) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Password tidak cocok'),
+                              ),
+                            );
+                            return;
+                          }
+
+                          setState(() => isLoading = true);
+
+                          try {
+                            final prefs = await SharedPreferences.getInstance();
+                            final currentPassword = prefs.getString(
+                              StorageKeys.savedPassword,
+                            );
+
+                            if (currentPassword == null) {
+                              throw Exception(
+                                'Sesi tidak valid. Silakan login ulang.',
+                              );
+                            }
+
+                            await authService.value.changePassword(
+                              currentPassword: currentPassword,
+                              newPassword: newPasswordController.text,
+                            );
+
+                            // Update password di SharedPreferences agar login biometrik tetap jalan
+                            await prefs.setString(
+                              StorageKeys.savedPassword,
+                              newPasswordController.text,
+                            );
+
+                            if (context.mounted) {
+                              Navigator.pop(context);
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('Password berhasil diubah'),
+                                  backgroundColor: Colors.green,
+                                ),
+                              );
+                            }
+                          } catch (e) {
+                            if (context.mounted) {
+                              setState(() => isLoading = false);
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text('Gagal mengubah password: $e'),
+                                  backgroundColor: Colors.red,
+                                ),
+                              );
+                            }
+                          }
+                        },
+                  child: const Text('Simpan'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -119,13 +339,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     title: l10n.biometricLogin,
                     subtitle: l10n.biometricLoginDesc,
                     value: _biometricLogin,
-                    onChanged: (v) => setState(() => _biometricLogin = v),
+                    onChanged: _toggleBiometric,
                   ),
                   _divider(),
                   _iosTile(
                     icon: CupertinoIcons.lock,
                     title: l10n.changePassword,
-                    onTap: () {},
+                    onTap: () => _showChangePasswordDialog(context),
                   ),
                 ]),
               ],

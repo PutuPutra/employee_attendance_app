@@ -2,10 +2,13 @@ import 'dart:ui';
 import 'package:animate_do/animate_do.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'home_screen.dart';
 import 'reset_password.dart';
 import '../auth/auth_service.dart';
 import '../l10n/app_localizations.dart';
+import '../core/constants/storage_keys.dart';
+import '../services/biometric_service.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -20,6 +23,74 @@ class _LoginScreenState extends State<LoginScreen> {
 
   bool _isLoading = false;
   bool _isPasswordVisible = false;
+  bool _showBiometricLogin = false;
+  final BiometricService _biometricService = BiometricService();
+
+  @override
+  void initState() {
+    super.initState();
+    _checkBiometricSettings();
+    _emailController.addListener(() => setState(() {}));
+    _passwordController.addListener(() => setState(() {}));
+  }
+
+  Future<void> _checkBiometricSettings() async {
+    final prefs = await SharedPreferences.getInstance();
+    final isEnabled = prefs.getBool(StorageKeys.isBiometricEnabled) ?? false;
+
+    if (isEnabled) {
+      final isAvailable = await _biometricService.isBiometricAvailable();
+      if (mounted) {
+        setState(() => _showBiometricLogin = isAvailable);
+      }
+    }
+  }
+
+  Future<void> _handleBiometricLogin() async {
+    try {
+      final authenticated = await _biometricService.authenticate();
+      if (authenticated) {
+        final prefs = await SharedPreferences.getInstance();
+        final email = prefs.getString(StorageKeys.savedEmail);
+        final password = prefs.getString(StorageKeys.savedPassword);
+
+        if (email != null && password != null) {
+          if (mounted) setState(() => _isLoading = true);
+          try {
+            await authService.value.signIn(email: email, password: password);
+            if (mounted) {
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(builder: (_) => const HomeScreen()),
+              );
+            }
+          } catch (e) {
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('Login gagal: ${e.toString()}')),
+              );
+            }
+          } finally {
+            if (mounted) setState(() => _isLoading = false);
+          }
+        } else if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                'Silakan login manual sekali untuk mengaktifkan fitur ini.',
+              ),
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e.toString().replaceAll('Exception: ', ''))),
+        );
+      }
+    }
+  }
 
   Future<void> _login() async {
     final l10n = AppLocalizations.of(context);
@@ -37,6 +108,11 @@ class _LoginScreenState extends State<LoginScreen> {
 
     try {
       await authService.value.signIn(email: email, password: password);
+
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(StorageKeys.savedEmail, email);
+      await prefs.setString(StorageKeys.savedPassword, password);
+
       if (mounted) {
         Navigator.pushReplacement(
           context,
@@ -99,6 +175,11 @@ class _LoginScreenState extends State<LoginScreen> {
     final l10n = AppLocalizations.of(context);
     final screenHeight = MediaQuery.of(context).size.height;
     final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    final bool isBiometricActive =
+        _showBiometricLogin &&
+        _emailController.text.isEmpty &&
+        _passwordController.text.isEmpty;
 
     return Scaffold(
       body: Stack(
@@ -252,7 +333,11 @@ class _LoginScreenState extends State<LoginScreen> {
                           width: double.infinity,
                           height: 54,
                           child: ElevatedButton(
-                            onPressed: _isLoading ? null : _login,
+                            onPressed: _isLoading
+                                ? null
+                                : (isBiometricActive
+                                      ? _handleBiometricLogin
+                                      : _login),
                             style: ElevatedButton.styleFrom(
                               backgroundColor: Colors.blue.shade900,
                               elevation: 6,
@@ -267,7 +352,9 @@ class _LoginScreenState extends State<LoginScreen> {
                                     ),
                                   )
                                 : Text(
-                                    l10n.login,
+                                    isBiometricActive
+                                        ? l10n.biometricLogin
+                                        : l10n.login,
                                     style: const TextStyle(
                                       fontSize: 17,
                                       fontWeight: FontWeight.w600,
