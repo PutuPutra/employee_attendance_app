@@ -29,6 +29,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
 
     try {
       await authService.value.resetPassword(email: email);
+
       if (mounted) {
         ScaffoldMessenger.of(
           context,
@@ -41,11 +42,12 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
         if (e.code == 'invalid-email') {
           message = l10n.invalidEmailFormat;
         }
+
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(SnackBar(content: Text(message)));
       }
-    } catch (e) {
+    } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(
           context,
@@ -63,84 +65,144 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
     final l10n = AppLocalizations.of(context);
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
+    final bgColor = isDark ? const Color(0xFF000000) : const Color(0xFFF2F2F7);
+
+    final cardColor = isDark ? const Color(0xFF1C1C1E) : Colors.white;
+
+    const primaryColor = Color(0xFF0A84FF); // iOS Blue
+
     return Scaffold(
-      appBar: AppBar(
-        title: Text(l10n.resetPassword),
-        backgroundColor: isDark ? Colors.grey[900] : Colors.blue.shade900,
-        foregroundColor: Colors.white,
-      ),
-      backgroundColor: isDark ? Colors.grey[850] : Colors.white,
-      body: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(
-              l10n.enterEmailToReset,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 16,
-                color: isDark ? Colors.white70 : Colors.black87,
+      backgroundColor: bgColor,
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const SizedBox(height: 20),
+
+              /// iOS Back Button
+              GestureDetector(
+                onTap: () => Navigator.pop(context),
+                child: Row(
+                  children: [
+                    const Icon(
+                      Icons.arrow_back_ios_new,
+                      size: 18,
+                      color: primaryColor,
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      l10n.backToLogin,
+                      style: const TextStyle(
+                        color: primaryColor,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
-            const SizedBox(height: 20),
-            TextField(
-              controller: _emailController,
-              decoration: InputDecoration(
-                labelText: l10n.email,
-                labelStyle: TextStyle(
+
+              const SizedBox(height: 30),
+
+              /// Large Title
+              Text(
+                l10n.resetPassword,
+                style: const TextStyle(
+                  fontSize: 34,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: -0.5,
+                ),
+              ),
+
+              const SizedBox(height: 8),
+
+              Text(
+                l10n.enterEmailToReset,
+                style: TextStyle(
+                  fontSize: 16,
                   color: isDark ? Colors.white70 : Colors.black54,
                 ),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                  borderSide: BorderSide(
-                    color: isDark ? Colors.white30 : Colors.grey,
-                  ),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                  borderSide: BorderSide(
-                    color: isDark ? Colors.blue : Colors.blue.shade900,
-                  ),
-                ),
               ),
-              style: TextStyle(color: isDark ? Colors.white : Colors.black),
-              keyboardType: TextInputType.emailAddress,
-            ),
-            const SizedBox(height: 20),
-            SizedBox(
-              width: double.infinity,
-              height: 50,
-              child: ElevatedButton(
-                onPressed: _isLoading ? null : _resetPassword,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: isDark ? Colors.blue : Colors.blue.shade900,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                ),
-                child: _isLoading
-                    ? const CircularProgressIndicator(color: Colors.white)
-                    : Text(
-                        l10n.sendResetLink,
-                        style: const TextStyle(color: Colors.white),
+
+              const SizedBox(height: 40),
+
+              /// Email Input Card
+              Container(
+                decoration: BoxDecoration(
+                  color: cardColor,
+                  borderRadius: BorderRadius.circular(20),
+                  boxShadow: [
+                    if (!isDark)
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.05),
+                        blurRadius: 20,
+                        offset: const Offset(0, 10),
                       ),
-              ),
-            ),
-            const SizedBox(height: 20),
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: Text(
-                l10n.backToLogin,
-                style: TextStyle(
-                  color: isDark ? Colors.blue.shade300 : Colors.blue.shade900,
+                  ],
+                ),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 6,
+                ),
+                child: TextField(
+                  controller: _emailController,
+                  keyboardType: TextInputType.emailAddress,
+                  style: const TextStyle(fontSize: 16),
+                  decoration: InputDecoration(
+                    border: InputBorder.none,
+                    hintText: l10n.email,
+                    hintStyle: TextStyle(
+                      color: isDark ? Colors.white38 : Colors.black38,
+                    ),
+                  ),
                 ),
               ),
-            ),
-          ],
+
+              const SizedBox(height: 30),
+
+              /// Reset Button
+              SizedBox(
+                width: double.infinity,
+                height: 56,
+                child: ElevatedButton(
+                  onPressed: _isLoading ? null : _resetPassword,
+                  style: ElevatedButton.styleFrom(
+                    elevation: 0,
+                    backgroundColor: primaryColor,
+                    disabledBackgroundColor: primaryColor.withOpacity(0.6),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(18),
+                    ),
+                  ),
+                  child: AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 200),
+                    child: _isLoading
+                        ? const SizedBox(
+                            width: 22,
+                            height: 22,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2.5,
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                Colors.white,
+                              ),
+                            ),
+                          )
+                        : Text(
+                            l10n.sendResetLink,
+                            key: const ValueKey("text"),
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                              letterSpacing: 0.3,
+                            ),
+                          ),
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

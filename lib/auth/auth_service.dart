@@ -20,22 +20,17 @@ class AuthService {
     );
   }
 
-  Future<UserCredential> creatAccount({
-    required String email,
-    required String password,
-  }) async {
-    return await firebaseAuth.signInWithEmailAndPassword(
-      email: email,
-      password: password,
-    );
-  }
-
   Future<void> signOut() async {
     await firebaseAuth.signOut();
   }
 
   Future<void> resetPassword({required String email}) async {
-    await firebaseAuth.sendPasswordResetEmail(email: email);
+    try {
+      await firebaseAuth.sendPasswordResetEmail(email: email);
+    } catch (e) {
+      debugPrint("Error sending reset email: $e");
+      rethrow;
+    }
   }
 
   Future<void> updateUsername({required String username}) async {
