@@ -84,7 +84,7 @@
   - Poppins (App Default)
 
 - **Security**
-  - Biometric Login (Coming Soon)
+  - Biometric Login (Fingerprint/Face ID)
   - Change Password
   - Face Data Management
 
@@ -135,6 +135,8 @@
 
 - **Firebase Core** 4.4.0 - Firebase SDK
 - **Firebase Auth** 6.1.4 - Authentication
+- **Cloud Firestore** 6.1.2 - Cloud Database
+- **Firebase Storage** 13.0.6 - File Storage
 
 ### Storage
 
@@ -150,6 +152,19 @@
 
 - **flutter_localizations** - Multi-language support
 - **intl** 0.20.2 - Internationalization
+
+### Machine Learning & Camera
+
+- **google_mlkit_face_detection** 0.13.2 - Face Detection
+- **tflite_flutter** 0.12.1 - Face Recognition
+- **camera** 0.11.3 - Camera Access
+- **image** 4.7.2 - Image Processing
+
+### Location & Biometrics
+
+- **geolocator** 14.0.2 - GPS Location
+- **geocoding** 4.0.0 - Address Conversion
+- **local_auth** 3.0.0 - Biometric Authentication
 
 ---
 
