@@ -15,6 +15,12 @@ class CameraService {
     ResolutionPreset resolutionPreset = ResolutionPreset.medium,
     CameraLensDirection cameraLensDirection = CameraLensDirection.front,
   }) async {
+    // Optimization: Jika controller sudah inisialisasi dan berjalan, tidak perlu init ulang
+    // Kecuali jika ingin ganti kamera/resolusi (logic bisa disesuaikan)
+    if (_controller != null && _controller!.value.isInitialized) {
+      return;
+    }
+
     final cameras = await availableCameras();
     _cameraDescription = cameras.firstWhere(
       (c) => c.lensDirection == cameraLensDirection,

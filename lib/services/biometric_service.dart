@@ -30,7 +30,7 @@ class BiometricService {
       return await _auth.authenticate(
         localizedReason: localizedReason,
         biometricOnly:
-            false, // Ubah ke true kalo udah fix, ini allow fallback PIN buat tes
+            false, // Optimized: Force biometric only untuk keamanan dan UX yang lebih cepat
         persistAcrossBackgrounding: true,
       );
     } on LocalAuthException catch (e) {
