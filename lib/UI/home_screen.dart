@@ -8,6 +8,7 @@ import 'login_screen.dart';
 import 'face_screen.dart';
 import 'face_scan.dart';
 import 'settings_screen.dart';
+import 'account_settings_screen.dart';
 import '../auth/auth_service.dart';
 import '../l10n/app_localizations.dart';
 
@@ -365,7 +366,24 @@ class _HomeScreenState extends State<HomeScreen> {
                                     icon: CupertinoIcons
                                         .person_crop_circle_badge_plus,
                                     color: CupertinoColors.systemPurple,
-                                    onTap: () => _go(const FaceScreen()),
+                                    onTap: () {
+                                      if (_employeeId == null ||
+                                          _employeeId!.isEmpty) {
+                                        ScaffoldMessenger.of(
+                                          context,
+                                        ).showSnackBar(
+                                          const SnackBar(
+                                            content: Text(
+                                              'Silakan lengkapi data akun terlebih dahulu.',
+                                            ),
+                                            backgroundColor: Colors.orange,
+                                          ),
+                                        );
+                                        _go(const AccountSettingsScreen());
+                                      } else {
+                                        _go(const FaceScreen());
+                                      }
+                                    },
                                   ),
                                 ),
                         ),
