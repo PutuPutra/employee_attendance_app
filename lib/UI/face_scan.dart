@@ -56,6 +56,7 @@ class _FaceScanViewState extends State<FaceScanView> {
   final CameraService _cameraService = CameraService();
   bool _isCameraInitialized = false;
   int _lastFrameTime = 0; // Untuk throttling
+  bool _isSubmittingAuto = false;
 
   @override
   void initState() {
@@ -67,6 +68,13 @@ class _FaceScanViewState extends State<FaceScanView> {
 
   Future<void> _initializeCamera() async {
     // Gunakan resolusi rendah (320x240) untuk performa lebih cepat & mencegah crash
+    // Opsi lain:
+    // - ResolutionPreset.low (320x240)
+    // - ResolutionPreset.medium (480p)
+    // - ResolutionPreset.high (720p)
+    // - ResolutionPreset.veryHigh (1080p)
+    // - ResolutionPreset.ultraHigh (2160p)
+    // - ResolutionPreset.max (Resolusi tertinggi yang didukung)
     await _cameraService.initializeCamera(
       resolutionPreset: ResolutionPreset.low,
     );
@@ -83,9 +91,9 @@ class _FaceScanViewState extends State<FaceScanView> {
     _cameraService.startImageStream((CameraImage image) {
       if (!mounted) return;
 
-      // THROTTLING: Hanya proses 1 frame setiap 500ms
+      // THROTTLING: Hanya proses 1 frame setiap 10ms (sebelumnya 500ms)
       final currentTime = DateTime.now().millisecondsSinceEpoch;
-      if (currentTime - _lastFrameTime < 500) return;
+      if (currentTime - _lastFrameTime < 100) return;
       _lastFrameTime = currentTime;
 
       context.read<FaceRecognitionBloc>().add(
@@ -164,30 +172,91 @@ class _FaceScanViewState extends State<FaceScanView> {
     return days[dayIndex];
   }
 
+  Future<void> _submitAttendance() async {
+    if (_isSubmittingAuto) return;
+
+    final l10n = AppLocalizations.of(context);
+    final locationState = context.read<LocationBloc>().state;
+
+    if (locationState is! LocationSuccess) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(l10n.locationNotFound)));
+      }
+      return;
+    }
+
+    setState(() {
+      _isSubmittingAuto = true;
+    });
+
+    try {
+      final XFile? image = await _cameraService.takePicture();
+      if (image == null) {
+        if (mounted) setState(() => _isSubmittingAuto = false);
+        return;
+      }
+
+      if (mounted) {
+        context.read<AttendanceBloc>().add(
+          SubmitAttendance(
+            employeeId: _id,
+            name: _name,
+            imagePath: image.name,
+            latitude: locationState.position.latitude,
+            longitude: locationState.position.longitude,
+            attendanceType: widget.attendanceType,
+            region: _region,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isSubmittingAuto = false);
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('${l10n.error}: $e')));
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    return BlocListener<AttendanceBloc, AttendanceState>(
-      listener: (context, state) {
-        if (state is AttendanceSuccess) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(l10n.attendanceSuccess),
-              backgroundColor: Colors.green,
-            ),
-          );
-          Navigator.pop(context);
-        } else if (state is AttendanceFailure) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('${l10n.attendanceFailed} ${state.error}'),
-              backgroundColor: Colors.red,
-            ),
-          );
-        }
-      },
+    return MultiBlocListener(
+      listeners: [
+        BlocListener<AttendanceBloc, AttendanceState>(
+          listener: (context, state) {
+            if (state is AttendanceSuccess) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(l10n.attendanceSuccess),
+                  backgroundColor: Colors.green,
+                ),
+              );
+              Navigator.pop(context);
+            } else if (state is AttendanceFailure) {
+              setState(() => _isSubmittingAuto = false);
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('${l10n.attendanceFailed} ${state.error}'),
+                  backgroundColor: Colors.red,
+                ),
+              );
+            }
+          },
+        ),
+        BlocListener<FaceRecognitionBloc, FaceRecognitionState>(
+          listener: (context, state) {
+            if (state is FaceMatched && !_isSubmittingAuto) {
+              _submitAttendance();
+            }
+          },
+        ),
+      ],
       child: Scaffold(
         body: Column(
           children: [
@@ -271,60 +340,38 @@ class _FaceScanViewState extends State<FaceScanView> {
                       return BlocBuilder<AttendanceBloc, AttendanceState>(
                         builder: (context, attendanceState) {
                           final isSubmitting =
-                              attendanceState is AttendanceLoading;
+                              attendanceState is AttendanceLoading ||
+                              _isSubmittingAuto;
 
                           // Teks tombol dinamis
-                          String buttonText;
-                          if (isMatched) {
+                          String buttonText = '';
+                          if (isSubmitting) {
+                            buttonText = l10n.loading;
+                          } else if (isMatched) {
                             buttonText = l10n.submit;
                           } else {
                             // Jika belum match, beri hint untuk berkedip
                             // (Asumsi: jika wajah terdeteksi tapi belum match, mungkin karena belum blink)
-                            buttonText = l10n.faceNotMatchBlink;
+                            if (faceState is FaceNotMatched) {
+                              // Cek konfigurasi dari Bloc
+                              if (FaceRecognitionBloc.isLivenessEnabled) {
+                                buttonText = l10n
+                                    .faceNotMatchBlink; // "Wajah Tidak Cocok / Silakan Berkedip"
+                              } else {
+                                buttonText = l10n
+                                    .faceNotMatch; // "Wajah Tidak Cocok" (BARU)
+                              }
+                            } else {
+                              // Provide a default text when face is not being processed.
+                              // This can be an empty string or a message like "Scan Face"
+                              buttonText =
+                                  ''; // Or buttonText = l10n.scanFace; with "scanFace" added to AppLocalizations
+                            }
                           }
 
                           return ElevatedButton(
                             onPressed: (isMatched && !isSubmitting)
-                                ? () async {
-                                    // 1. Ambil lokasi dari LocationBloc
-                                    final locationState = context
-                                        .read<LocationBloc>()
-                                        .state;
-                                    if (locationState is! LocationSuccess) {
-                                      ScaffoldMessenger.of(
-                                        context,
-                                      ).showSnackBar(
-                                        SnackBar(
-                                          content: Text(l10n.locationNotFound),
-                                        ),
-                                      );
-                                      return;
-                                    }
-
-                                    // 2. Ambil foto (capture) untuk bukti
-                                    final XFile? image = await _cameraService
-                                        .takePicture();
-                                    if (image == null) return;
-
-                                    // 3. Dispatch Submit Event
-                                    if (context.mounted) {
-                                      context.read<AttendanceBloc>().add(
-                                        SubmitAttendance(
-                                          employeeId: _id,
-                                          name: _name,
-                                          imagePath: image
-                                              .name, // Simpan nama file saja
-                                          latitude:
-                                              locationState.position.latitude,
-                                          longitude:
-                                              locationState.position.longitude,
-                                          attendanceType: widget
-                                              .attendanceType, // Kirim tipe absensi
-                                          region: _region,
-                                        ),
-                                      );
-                                    }
-                                  }
+                                ? _submitAttendance
                                 : null, // Disable jika wajah tidak match
                             style: ElevatedButton.styleFrom(
                               backgroundColor: isMatched

@@ -22,6 +22,10 @@ class FaceRecognitionBloc
   List<double>? _registeredEmbedding;
   bool _isProcessing = false;
 
+  // --- KONFIGURASI LIVENESS DETECTION ---
+  // Ubah ke true untuk mengaktifkan fitur kedip, false untuk mematikan (langsung scan)
+  static const bool isLivenessEnabled = false;
+
   // Variabel untuk Liveness Detection (Kedipan)
   int? _currentTrackingId;
   bool _hasBlinked = false;
@@ -115,18 +119,19 @@ class FaceRecognitionBloc
 
       if (face != null) {
         // --- LIVENESS DETECTION (BLINK CHECK) ---
-        // Reset status jika wajah berganti (trackingId berubah)
-        if (face.trackingId != _currentTrackingId) {
-          _currentTrackingId = face.trackingId;
-          _hasBlinked = false;
-        }
+        if (isLivenessEnabled) {
+          // Reset status jika wajah berganti (trackingId berubah)
+          if (face.trackingId != _currentTrackingId) {
+            _currentTrackingId = face.trackingId;
+            _hasBlinked = false;
+          }
 
-        // Deteksi mata tertutup (Probabilitas < 0.1 atau 10%)
-        // enableClassification harus true di FaceDetectionService
-        if ((face.leftEyeOpenProbability ?? 1.0) < 0.1 &&
-            (face.rightEyeOpenProbability ?? 1.0) < 0.1) {
-          _hasBlinked = true;
-          debugPrint("Liveness: Blink Detected! (Eyes Closed)");
+          // Deteksi mata tertutup (Probabilitas < 0.1 atau 10%)
+          if ((face.leftEyeOpenProbability ?? 1.0) < 0.1 &&
+              (face.rightEyeOpenProbability ?? 1.0) < 0.1) {
+            _hasBlinked = true;
+            debugPrint("Liveness: Blink Detected! (Eyes Closed)");
+          }
         }
         // ----------------------------------------
 
@@ -146,13 +151,18 @@ class FaceRecognitionBloc
         );
 
         if (isMatch) {
-          // HANYA valid jika sudah berkedip DAN mata sekarang terbuka
-          if (_hasBlinked && (face.leftEyeOpenProbability ?? 0.0) > 0.5) {
-            if (state is! FaceMatched) emit(FaceMatched(0.95));
+          if (isLivenessEnabled) {
+            // HANYA valid jika sudah berkedip DAN mata sekarang terbuka
+            if (_hasBlinked && (face.leftEyeOpenProbability ?? 0.0) > 0.5) {
+              if (state is! FaceMatched) emit(FaceMatched(0.95));
+            } else {
+              // Wajah cocok tapi belum berkedip -> Tetap NotMatched
+              debugPrint("Liveness: Face matched but waiting for blink...");
+              if (state is! FaceNotMatched) emit(FaceNotMatched());
+            }
           } else {
-            // Wajah cocok tapi belum berkedip -> Tetap NotMatched
-            debugPrint("Liveness: Face matched but waiting for blink...");
-            if (state is! FaceNotMatched) emit(FaceNotMatched());
+            // Jika liveness mati, langsung match tanpa syarat kedip
+            if (state is! FaceMatched) emit(FaceMatched(0.95));
           }
         } else {
           if (state is! FaceNotMatched) emit(FaceNotMatched());

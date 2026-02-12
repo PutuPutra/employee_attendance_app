@@ -243,6 +243,8 @@ class AppLocalizations {
   String get unknown => _localizedValues[locale.languageCode]!['unknown']!;
   String get faceNotMatchBlink =>
       _localizedValues[locale.languageCode]!['face_not_match_blink']!;
+  String get faceNotMatch =>
+      _localizedValues[locale.languageCode]!['face_not_match']!;
   String get locationNotFound =>
       _localizedValues[locale.languageCode]!['location_not_found']!;
   String get searchingLocation =>
@@ -408,6 +410,7 @@ class AppLocalizations {
       'not_available': 'N/A',
       'unknown': 'Unknown',
       'face_not_match_blink': 'Face Not Matched / Please Blink 😉',
+      'face_not_match': 'Face Not Matched',
       'location_not_found': 'Location not found',
       'searching_location': 'Searching location...',
       'location_unknown': 'Location status unknown.',
@@ -566,6 +569,7 @@ class AppLocalizations {
       'not_available': 'T/A',
       'unknown': 'Tidak Diketahui',
       'face_not_match_blink': 'Wajah Tidak Cocok / Silakan Berkedip 😉',
+      'face_not_match': 'Wajah Tidak Cocok',
       'location_not_found': 'Lokasi belum ditemukan',
       'searching_location': 'Mencari lokasi...',
       'location_unknown': 'Status lokasi tidak diketahui.',

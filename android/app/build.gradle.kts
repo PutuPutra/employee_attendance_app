@@ -27,7 +27,7 @@ android {
         applicationId = "com.example.gunas_employee_attendance"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
-        minSdk = flutter.minSdkVersion  // Ubah ke 23 buat biometric auth work (Android 6.0+ required)
+        minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
