@@ -279,6 +279,12 @@ class AppLocalizations {
       _localizedValues[locale.languageCode]!['no_face_data']!;
   String get faceNotRegistered =>
       _localizedValues[locale.languageCode]!['face_not_registered']!;
+  String get noFaceInRegisteredPhoto =>
+      _localizedValues[locale.languageCode]!['no_face_in_registered_photo']!;
+  String get faceFileNotFound =>
+      _localizedValues[locale.languageCode]!['face_file_not_found']!;
+  String get loginRequired =>
+      _localizedValues[locale.languageCode]!['login_required']!;
   String get loading => _localizedValues[locale.languageCode]!['loading']!;
 
   // Face Scan Screen
@@ -480,6 +486,9 @@ class AppLocalizations {
       'face_profile': 'Face Profile',
       'no_face_data': 'No Face Data',
       'face_not_registered': 'Your face is not registered yet.',
+      'no_face_in_registered_photo': 'No face found in registered photo.',
+      'face_file_not_found': 'Face file not found locally.',
+      'login_required': 'Please login first.',
       'loading': 'Loading...',
 
       // Face Scan Screen
@@ -671,6 +680,9 @@ class AppLocalizations {
       'face_profile': 'Profil Wajah',
       'no_face_data': 'Tidak Ada Data Wajah',
       'face_not_registered': 'Wajah Anda belum terdaftar.',
+      'no_face_in_registered_photo': 'Tidak ada wajah di foto terdaftar.',
+      'face_file_not_found': 'File wajah tidak ditemukan di lokal.',
+      'login_required': 'Silakan login terlebih dahulu.',
       'loading': 'Memuat...',
 
       // Face Scan Screen

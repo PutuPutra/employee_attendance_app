@@ -253,6 +253,25 @@ class _FaceScanViewState extends State<FaceScanView> {
           listener: (context, state) {
             if (state is FaceMatched && !_isSubmittingAuto) {
               _submitAttendance();
+            } else if (state is FaceRecognitionFailure) {
+              // Terjemahkan kode error dari Bloc
+              String errorMsg = state.error;
+              if (errorMsg == 'no_face_in_registered_photo') {
+                errorMsg = l10n.noFaceInRegisteredPhoto;
+              } else if (errorMsg == 'face_file_not_found') {
+                errorMsg = l10n.faceFileNotFound;
+              } else if (errorMsg == 'face_not_registered') {
+                errorMsg = l10n.faceNotRegistered;
+              } else if (errorMsg == 'login_required') {
+                errorMsg = l10n.loginRequired;
+              }
+
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(errorMsg),
+                  backgroundColor: Colors.red,
+                ),
+              );
             }
           },
         ),

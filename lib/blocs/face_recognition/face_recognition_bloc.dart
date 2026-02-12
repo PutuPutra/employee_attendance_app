@@ -47,7 +47,7 @@ class FaceRecognitionBloc
 
       final user = _auth.currentUser;
       if (user == null) {
-        emit(FaceRecognitionFailure("User tidak login"));
+        emit(FaceRecognitionFailure("login_required"));
         return;
       }
 
@@ -57,7 +57,7 @@ class FaceRecognitionBloc
           .doc(user.uid)
           .get();
       if (!doc.exists || doc.data()?['faceImagePath'] == null) {
-        emit(FaceRecognitionFailure("Wajah belum didaftarkan"));
+        emit(FaceRecognitionFailure("face_not_registered"));
         return;
       }
 
@@ -66,7 +66,7 @@ class FaceRecognitionBloc
       final file = File('${directory.path}/$fileName');
 
       if (!await file.exists()) {
-        emit(FaceRecognitionFailure("File wajah tidak ditemukan di lokal"));
+        emit(FaceRecognitionFailure("face_file_not_found"));
         return;
       }
 
@@ -84,7 +84,7 @@ class FaceRecognitionBloc
         final faces = await faceDetector.processImage(inputImage);
 
         if (faces.isEmpty) {
-          emit(FaceRecognitionFailure("Tidak ada wajah di foto terdaftar"));
+          emit(FaceRecognitionFailure("no_face_in_registered_photo"));
           return;
         }
 
