@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 import 'package:camera/camera.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -8,6 +9,8 @@ import 'package:google_mlkit_face_detection/google_mlkit_face_detection.dart';
 import 'package:gunas_employee_attendance/services/face_detection_service.dart';
 import 'package:gunas_employee_attendance/services/ml_service.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:http/http.dart' as http;
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 part 'face_recognition_event.dart';
 part 'face_recognition_state.dart';
@@ -18,6 +21,11 @@ class FaceRecognitionBloc
   final MLService _mlService = MLService();
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
+
+  // KONFIGURASI IMAGEKIT
+  String get _imageKitPrivateKey => dotenv.env['IMAGEKIT_PRIVATE_KEY'] ?? '';
+  final String _imageKitUrlEndpoint =
+      'https://upload.imagekit.io/api/v1/files/upload';
 
   List<double>? _registeredEmbedding;
   bool _isProcessing = false;
@@ -56,18 +64,55 @@ class FaceRecognitionBloc
           .collection('face_register')
           .doc(user.uid)
           .get();
-      if (!doc.exists || doc.data()?['faceImagePath'] == null) {
+      if (!doc.exists) {
         emit(FaceRecognitionFailure("face_not_registered"));
         return;
       }
 
-      final fileName = doc.data()!['faceImagePath'];
+      final data = doc.data()!;
+      final faceImageUrl = data['faceImageUrl'] as String?;
+      // Gunakan nama file dari Firestore atau default jika null (Cloud First Strategy)
+      final fileName =
+          data['faceImagePath'] as String? ?? '${user.uid}_face.jpg';
+
       final directory = await getApplicationDocumentsDirectory();
       final file = File('${directory.path}/$fileName');
 
+      // 1. PRIORITAS CLOUD: Jika ada URL ImageKit, pastikan file lokal tersedia (Download jika hilang)
+      if (faceImageUrl != null) {
+        if (!await file.exists()) {
+          debugPrint("Restoring face from ImageKit...");
+          try {
+            final request = await HttpClient().getUrl(Uri.parse(faceImageUrl));
+            final response = await request.close();
+            if (response.statusCode == 200) {
+              final bytes = await consolidateHttpClientResponseBytes(response);
+              await file.writeAsBytes(bytes);
+              debugPrint("Face restored from ImageKit.");
+            }
+          } catch (e) {
+            debugPrint("Failed to restore face image: $e");
+          }
+        }
+      }
+
+      // 2. VALIDASI: Cek apakah file akhirnya ada (baik dari lokal atau hasil download)
       if (!await file.exists()) {
         emit(FaceRecognitionFailure("face_file_not_found"));
         return;
+      }
+
+      // 3. BACKUP (Legacy): Jika file lokal ada tapi belum ada di ImageKit, upload sekarang.
+      if (faceImageUrl == null) {
+        try {
+          final url = await _uploadToImageKit(file, fileName);
+          await _firestore.collection('face_register').doc(user.uid).update({
+            'faceImageUrl': url,
+          });
+          debugPrint("Face image backed up to ImageKit successfully.");
+        } catch (e) {
+          debugPrint("Failed to backup face to ImageKit: $e");
+        }
       }
 
       // 2. Deteksi wajah pada gambar file
@@ -178,6 +223,32 @@ class FaceRecognitionBloc
       debugPrint("Error processing face: $e");
     } finally {
       _isProcessing = false;
+    }
+  }
+
+  Future<String> _uploadToImageKit(File file, String fileName) async {
+    final request = http.MultipartRequest(
+      'POST',
+      Uri.parse(_imageKitUrlEndpoint),
+    );
+
+    request.fields['fileName'] = fileName;
+    request.fields['folder'] = '/attendance/';
+    request.fields['useUniqueFileName'] = 'false';
+
+    final auth = 'Basic ' + base64Encode(utf8.encode('$_imageKitPrivateKey:'));
+    request.headers['Authorization'] = auth;
+
+    request.files.add(await http.MultipartFile.fromPath('file', file.path));
+
+    final response = await request.send();
+
+    if (response.statusCode == 200 || response.statusCode == 201) {
+      final respStr = await response.stream.bytesToString();
+      final json = jsonDecode(respStr);
+      return json['url'];
+    } else {
+      throw Exception('ImageKit Upload Failed: ${response.statusCode}');
     }
   }
 

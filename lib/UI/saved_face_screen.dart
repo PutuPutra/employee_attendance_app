@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
 import '../l10n/app_localizations.dart';
@@ -78,13 +79,35 @@ class _SavedFaceScreenState extends State<SavedFaceScreen> {
           .doc(user.uid)
           .get();
       if (!doc.exists) return null;
-      final fileName = doc.data()?['faceImagePath'] as String?;
-      if (fileName == null) return null;
+
+      final data = doc.data();
+      final faceImageUrl = data?['faceImageUrl'] as String?;
+      // Gunakan nama file dari Firestore atau default jika null (Cloud First Strategy)
+      final fileName =
+          data?['faceImagePath'] as String? ?? '${user.uid}_face.jpg';
 
       final directory = await getApplicationDocumentsDirectory();
       final path = '${directory.path}/$fileName';
       final file = File(path);
-      return await file.exists() ? file : null;
+
+      if (await file.exists()) {
+        return file;
+      } else if (faceImageUrl != null) {
+        // Restore: Download image from ImageKit if local file is missing
+        try {
+          final request = await HttpClient().getUrl(Uri.parse(faceImageUrl));
+          final response = await request.close();
+          if (response.statusCode == 200) {
+            final bytes = await consolidateHttpClientResponseBytes(response);
+            await file.writeAsBytes(bytes);
+            return file;
+          }
+        } catch (e) {
+          debugPrint('Error restoring face image: $e');
+        }
+      }
+
+      return null;
     } catch (e) {
       debugPrint('Error getting saved image: $e');
       return null;
@@ -106,14 +129,15 @@ class _SavedFaceScreenState extends State<SavedFaceScreen> {
           .doc(user.uid)
           .get();
       if (doc.exists) {
-        final fileName = doc.data()?['faceImagePath'] as String?;
-        if (fileName != null) {
-          final directory = await getApplicationDocumentsDirectory();
-          final path = '${directory.path}/$fileName';
-          final file = File(path);
-          if (await file.exists()) {
-            await file.delete();
-          }
+        final data = doc.data();
+        final fileName =
+            data?['faceImagePath'] as String? ?? '${user.uid}_face.jpg';
+
+        final directory = await getApplicationDocumentsDirectory();
+        final path = '${directory.path}/$fileName';
+        final file = File(path);
+        if (await file.exists()) {
+          await file.delete();
         }
       }
 

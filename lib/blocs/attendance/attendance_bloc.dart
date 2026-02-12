@@ -1,13 +1,23 @@
+import 'dart:convert';
+import 'dart:io';
 import 'package:bloc/bloc.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:equatable/equatable.dart';
 import 'package:intl/intl.dart';
+import 'package:http/http.dart' as http;
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 part 'attendance_event.dart';
 part 'attendance_state.dart';
 
 class AttendanceBloc extends Bloc<AttendanceEvent, AttendanceState> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+
+  // KONFIGURASI IMAGEKIT
+  // ⚠️ PENTING: Masukkan Private Key Anda di sini
+  String get _imageKitPrivateKey => dotenv.env['IMAGEKIT_PRIVATE_KEY'] ?? '';
+  final String _imageKitUrlEndpoint =
+      'https://upload.imagekit.io/api/v1/files/upload';
 
   AttendanceBloc() : super(AttendanceInitial()) {
     on<SubmitAttendance>(_onSubmitAttendance);
@@ -77,11 +87,22 @@ class AttendanceBloc extends Bloc<AttendanceEvent, AttendanceState> {
       final lateThreshold = limitTime.add(const Duration(minutes: 5));
       final statusCheckIn = now.isAfter(lateThreshold) ? 2 : 1;
 
+      // Upload to ImageKit (Backup Cloud)
+      String? imageUrl;
+      try {
+        final fileName =
+            '${event.employeeId}_attendance_${DateFormat('yyyyMMdd_HHmmss').format(now)}.jpg';
+        imageUrl = await _uploadToImageKit(File(event.imagePath), fileName);
+      } catch (e) {
+        print("Warning: Gagal upload attendance ke ImageKit: $e");
+      }
+
       // Selalu simpan data baru (Add Document)
       await _firestore.collection('user_attendance').add({
         'employeeId': event.employeeId,
         'name': event.name,
         'imagePath': event.imagePath,
+        'imageUrl': imageUrl,
         'latitude': event.latitude,
         'longitude': event.longitude,
         'status': status, // 1=CheckIn, 2=Break, 3=Return, 4=CheckOut
@@ -93,6 +114,33 @@ class AttendanceBloc extends Bloc<AttendanceEvent, AttendanceState> {
       emit(AttendanceSuccess());
     } catch (e) {
       emit(AttendanceFailure(error: e.toString()));
+    }
+  }
+
+  Future<String> _uploadToImageKit(File file, String fileName) async {
+    final request = http.MultipartRequest(
+      'POST',
+      Uri.parse(_imageKitUrlEndpoint),
+    );
+
+    request.fields['fileName'] = fileName;
+    request.fields['folder'] = '/attendance/';
+    request.fields['useUniqueFileName'] = 'false';
+
+    // Basic Auth menggunakan Private Key
+    final auth = 'Basic ' + base64Encode(utf8.encode('$_imageKitPrivateKey:'));
+    request.headers['Authorization'] = auth;
+
+    request.files.add(await http.MultipartFile.fromPath('file', file.path));
+
+    final response = await request.send();
+
+    if (response.statusCode == 200 || response.statusCode == 201) {
+      final respStr = await response.stream.bytesToString();
+      final json = jsonDecode(respStr);
+      return json['url']; // URL gambar dari ImageKit
+    } else {
+      throw Exception('ImageKit Upload Failed: ${response.statusCode}');
     }
   }
 }

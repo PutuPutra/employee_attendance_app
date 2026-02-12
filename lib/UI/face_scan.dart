@@ -203,7 +203,7 @@ class _FaceScanViewState extends State<FaceScanView> {
           SubmitAttendance(
             employeeId: _id,
             name: _name,
-            imagePath: image.name,
+            imagePath: image.path,
             latitude: locationState.position.latitude,
             longitude: locationState.position.longitude,
             attendanceType: widget.attendanceType,
@@ -267,10 +267,7 @@ class _FaceScanViewState extends State<FaceScanView> {
               }
 
               ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(errorMsg),
-                  backgroundColor: Colors.red,
-                ),
+                SnackBar(content: Text(errorMsg), backgroundColor: Colors.red),
               );
             }
           },
