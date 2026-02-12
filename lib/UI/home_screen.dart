@@ -53,7 +53,7 @@ class _HomeScreenState extends State<HomeScreen> {
           .snapshots()
           .listen(
             (snapshot) {
-              final data = snapshot.data();
+              final data = snapshot.data() as Map<String, dynamic>?;
               final newEmployeeId = data?['employeeId']?.toString() ?? '';
 
               // Jika employeeId berubah, update state dan listener face register
@@ -372,9 +372,9 @@ class _HomeScreenState extends State<HomeScreen> {
                                         ScaffoldMessenger.of(
                                           context,
                                         ).showSnackBar(
-                                          const SnackBar(
+                                          SnackBar(
                                             content: Text(
-                                              'Silakan lengkapi data akun terlebih dahulu.',
+                                              l10n.completeAccountDataFirst,
                                             ),
                                             backgroundColor: Colors.orange,
                                           ),
@@ -464,7 +464,9 @@ class _HomeScreenState extends State<HomeScreen> {
                                         "❌ Stream Error: ${snapshot.error}",
                                       );
                                       return Center(
-                                        child: Text('Error: ${snapshot.error}'),
+                                        child: Text(
+                                          '${l10n.error}: ${snapshot.error}',
+                                        ),
                                       );
                                     }
 
@@ -567,7 +569,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                     if (historyList.isEmpty) {
                                       return Center(
                                         child: Text(
-                                          'No history found',
+                                          l10n.noHistoryFound,
                                           style: TextStyle(
                                             color: isDark
                                                 ? Colors.white70
@@ -800,6 +802,7 @@ class _ProfileHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final user = authService.value.currentUser;
+    final l10n = AppLocalizations.of(context);
 
     return Row(
       children: [
@@ -828,15 +831,18 @@ class _ProfileHeader extends StatelessWidget {
                 builder: (context, snapshot) {
                   if (snapshot.connectionState == ConnectionState.waiting &&
                       !snapshot.hasData) {
-                    return const Text(
-                      'ID: ...',
-                      style: TextStyle(fontSize: 12, color: Colors.white70),
+                    return Text(
+                      '${l10n.idLabel}: ...',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: Colors.white70,
+                      ),
                     );
                   }
                   final data = snapshot.data?.data() as Map<String, dynamic>?;
-                  final employeeId = data?['employeeId'] ?? 'N/A';
+                  final employeeId = data?['employeeId'] ?? l10n.notAvailable;
                   return Text(
-                    'ID: $employeeId',
+                    '${l10n.idLabel}: $employeeId',
                     style: const TextStyle(fontSize: 12, color: Colors.white70),
                   );
                 },
@@ -898,7 +904,7 @@ class _IOSActionCard extends StatelessWidget {
           boxShadow: [
             BoxShadow(
               color: isDark
-                  ? Colors.black.withOpacity(0.3)
+                  ? Colors.black.withValues(alpha: 0.3)
                   : const Color(0x11000000),
               blurRadius: 10,
               offset: const Offset(0, 4),

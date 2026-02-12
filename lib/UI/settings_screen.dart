@@ -24,12 +24,23 @@ class SettingsScreen extends StatefulWidget {
 
 class _SettingsScreenState extends State<SettingsScreen> {
   bool _biometricLogin = false;
+  bool _isBiometricSupported = false;
   final BiometricService _biometricService = BiometricService();
 
   @override
   void initState() {
     super.initState();
+    _checkBiometricSupport();
     _loadBiometricSettings();
+  }
+
+  Future<void> _checkBiometricSupport() async {
+    final isSupported = await _biometricService.isBiometricAvailable();
+    if (mounted) {
+      setState(() {
+        _isBiometricSupported = isSupported;
+      });
+    }
   }
 
   Future<void> _loadBiometricSettings() async {
@@ -43,14 +54,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _toggleBiometric(bool value) async {
+    final l10n = AppLocalizations.of(context);
     if (value) {
       // Cek ketersediaan & Autentikasi sebelum mengaktifkan
       final isAvailable = await _biometricService.isBiometricAvailable();
       if (!isAvailable) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Biometrik tidak tersedia di perangkat ini.'),
+            SnackBar(
+              content: Text('${l10n.biometricLogin} ${l10n.notAvailable}'),
             ),
           );
         }
@@ -58,22 +70,36 @@ class _SettingsScreenState extends State<SettingsScreen> {
       }
 
       try {
-        final authenticated = await _biometricService.authenticate();
+        final authenticated = await _biometricService.authenticate(
+          localizedReason: l10n.biometricReason,
+        );
         if (!authenticated) {
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Autentikasi biometrik dibatalkan atau gagal.'),
-              ),
+              SnackBar(content: Text('${l10n.biometricLogin} ${l10n.failed}')),
             );
           }
           return; // Batal jika gagal auth
         }
       } catch (e) {
+        String message = e.toString();
+        // Mapping kode error ke bahasa dinamis
+        if (message.contains('BIOMETRIC_NOT_AVAILABLE')) {
+          message = l10n.biometricNotAvailable;
+        } else if (message.contains('BIOMETRIC_NOT_ENROLLED')) {
+          message = l10n.biometricNotEnrolled;
+        } else if (message.contains('BIOMETRIC_NO_CREDENTIALS')) {
+          message = l10n.biometricNoCredentials;
+        } else if (message.contains('BIOMETRIC_LOCKOUT')) {
+          message = l10n.biometricLockout;
+        } else if (message.contains('BIOMETRIC_AUTH_FAILED')) {
+          message = l10n.biometricAuthFailed;
+        }
+
         if (mounted) {
           ScaffoldMessenger.of(
             context,
-          ).showSnackBar(SnackBar(content: Text(e.toString())));
+          ).showSnackBar(SnackBar(content: Text(message)));
         }
         return;
       }
@@ -105,7 +131,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   CupertinoTextField(
                     controller: newPasswordController,
                     obscureText: isObscureNew,
-                    placeholder: 'Password Baru',
+                    placeholder: l10n.newPassword,
                     padding: const EdgeInsets.all(12),
                     suffix: GestureDetector(
                       onTap: () {
@@ -129,7 +155,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   CupertinoTextField(
                     controller: confirmPasswordController,
                     obscureText: isObscureConfirm,
-                    placeholder: 'Konfirmasi Password Baru',
+                    placeholder: l10n.confirmNewPassword,
                     padding: const EdgeInsets.all(12),
                     suffix: GestureDetector(
                       onTap: () {
@@ -168,9 +194,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           if (newPasswordController.text.isEmpty ||
                               confirmPasswordController.text.isEmpty) {
                             ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('Mohon isi semua kolom'),
-                              ),
+                              SnackBar(content: Text(l10n.fillAllFields)),
                             );
                             return;
                           }
@@ -178,9 +202,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           if (newPasswordController.text !=
                               confirmPasswordController.text) {
                             ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('Password tidak cocok'),
-                              ),
+                              SnackBar(content: Text(l10n.passwordMismatch)),
                             );
                             return;
                           }
@@ -213,8 +235,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             if (context.mounted) {
                               Navigator.pop(context);
                               ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text('Password berhasil diubah'),
+                                SnackBar(
+                                  content: Text(l10n.passwordChangedSuccess),
                                   backgroundColor: Colors.green,
                                 ),
                               );
@@ -224,14 +246,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               setState(() => isLoading = false);
                               ScaffoldMessenger.of(context).showSnackBar(
                                 SnackBar(
-                                  content: Text('Gagal mengubah password: $e'),
+                                  content: Text('${l10n.failed}: $e'),
                                   backgroundColor: Colors.red,
                                 ),
                               );
                             }
                           }
                         },
-                  child: const Text('Simpan'),
+                  child: Text(l10n.updatePassword),
                 ),
               ],
             );
@@ -335,13 +357,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
                 _sectionHeader(l10n.security),
                 _sectionCard([
-                  _iosSwitchTile(
-                    title: l10n.biometricLogin,
-                    subtitle: l10n.biometricLoginDesc,
-                    value: _biometricLogin,
-                    onChanged: _toggleBiometric,
-                  ),
-                  _divider(),
+                  if (_isBiometricSupported) ...[
+                    _iosSwitchTile(
+                      title: l10n.biometricLogin,
+                      subtitle: l10n.biometricLoginDesc,
+                      value: _biometricLogin,
+                      onChanged: _toggleBiometric,
+                    ),
+                    _divider(),
+                  ],
                   _iosTile(
                     icon: CupertinoIcons.lock,
                     title: l10n.changePassword,

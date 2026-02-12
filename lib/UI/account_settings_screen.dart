@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import '../l10n/app_localizations.dart';
 
 class AccountSettingsScreen extends StatefulWidget {
   const AccountSettingsScreen({super.key});
@@ -78,11 +79,10 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
     if (user == null) {
       if (mounted) {
         setState(() => _isLoading = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Pengguna tidak ditemukan. Silakan login kembali.'),
-          ),
-        );
+        final l10n = AppLocalizations.of(context);
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(l10n.userNotFoundLoginAgain)));
       }
       return;
     }
@@ -134,9 +134,10 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
       }
     } catch (e) {
       if (mounted) {
+        final l10n = AppLocalizations.of(context);
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(SnackBar(content: Text('Gagal memuat data: $e')));
+        ).showSnackBar(SnackBar(content: Text('${l10n.failedToLoad}: $e')));
       }
     } finally {
       if (mounted) {
@@ -146,6 +147,7 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
   }
 
   Future<void> _saveChanges() async {
+    final l10n = AppLocalizations.of(context);
     if (!_formKey.currentState!.validate() || _isSaving) {
       return;
     }
@@ -156,11 +158,9 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
     if (user == null) {
       if (mounted) {
         setState(() => _isSaving = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Sesi berakhir. Silakan login kembali.'),
-          ),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(l10n.sessionExpired)));
       }
       return;
     }
@@ -187,8 +187,8 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Perubahan berhasil disimpan!'),
+          SnackBar(
+            content: Text(l10n.changesSaved),
             backgroundColor: Colors.green,
           ),
         );
@@ -197,9 +197,9 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
     } catch (e) {
       if (mounted) {
         setState(() => _isSaving = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Gagal menyimpan perubahan: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('${l10n.failedToSave}: $e')));
       }
     }
   }
@@ -213,8 +213,10 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+
     return Scaffold(
-      appBar: AppBar(title: const Text('Personalisasi Akun'), elevation: 0),
+      appBar: AppBar(title: Text(l10n.accountPersonalization), elevation: 0),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : SingleChildScrollView(
@@ -224,43 +226,43 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _buildSectionHeader('ID Karyawan'),
+                    _buildSectionHeader(l10n.employeeIdLabel),
                     const SizedBox(height: 8),
                     _buildReadOnlyTextField(
-                      _employeeId ?? 'Membuat ID...',
+                      _employeeId ?? l10n.generatingId,
                       CupertinoIcons.number,
                     ),
                     const SizedBox(height: 24),
 
-                    _buildSectionHeader('Data Akun'),
+                    _buildSectionHeader(l10n.accountData),
                     const SizedBox(height: 16),
 
                     _buildTextFormField(
                       controller: _usernameController,
-                      label: 'Username',
+                      label: l10n.username,
                       icon: CupertinoIcons.person,
                       validator: (value) => value == null || value.isEmpty
-                          ? 'Username tidak boleh kosong'
+                          ? l10n.usernameRequired
                           : null,
                     ),
                     const SizedBox(height: 16),
 
                     _buildTextFormField(
                       controller: _emailController,
-                      label: 'Alamat Email',
+                      label: l10n.emailAddress,
                       icon: CupertinoIcons.at,
                       keyboardType: TextInputType.emailAddress,
                       validator: (value) =>
                           value == null || !value.contains('@')
-                          ? 'Masukkan alamat email yang valid'
+                          ? l10n.invalidEmail
                           : null,
                     ),
                     const SizedBox(height: 16),
 
                     DropdownButtonFormField<String>(
-                      value: _selectedRegion,
+                      initialValue: _selectedRegion,
                       decoration: InputDecoration(
-                        labelText: 'Region / Wilayah',
+                        labelText: l10n.regionLabel,
                         prefixIcon: const Icon(
                           CupertinoIcons.location,
                           size: 20,
@@ -279,15 +281,15 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
                       onChanged: (newValue) =>
                           setState(() => _selectedRegion = newValue),
                       validator: (value) => value == null || value.isEmpty
-                          ? 'Region tidak boleh kosong'
+                          ? l10n.regionRequired
                           : null,
                     ),
                     const SizedBox(height: 16),
 
                     DropdownButtonFormField<String>(
-                      value: _selectedLokasi,
+                      initialValue: _selectedLokasi,
                       decoration: InputDecoration(
-                        labelText: 'Lokasi / PT',
+                        labelText: l10n.locationLabel,
                         prefixIcon: const Icon(
                           CupertinoIcons.building_2_fill,
                           size: 20,
@@ -306,7 +308,7 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
                       onChanged: (newValue) =>
                           setState(() => _selectedLokasi = newValue),
                       validator: (value) => value == null || value.isEmpty
-                          ? 'Lokasi tidak boleh kosong'
+                          ? l10n.locationRequired
                           : null,
                     ),
                     const SizedBox(height: 40),
@@ -325,9 +327,9 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
                             ? const CupertinoActivityIndicator(
                                 color: Colors.white,
                               )
-                            : const Text(
-                                'Simpan Perubahan',
-                                style: TextStyle(
+                            : Text(
+                                l10n.saveChanges,
+                                style: const TextStyle(
                                   fontSize: 16,
                                   fontWeight: FontWeight.bold,
                                 ),
@@ -356,10 +358,10 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
-        color: Theme.of(context).disabledColor.withOpacity(0.1),
+        color: Theme.of(context).disabledColor.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: Theme.of(context).disabledColor.withOpacity(0.2),
+          color: Theme.of(context).disabledColor.withValues(alpha: 0.2),
         ),
       ),
       child: Row(

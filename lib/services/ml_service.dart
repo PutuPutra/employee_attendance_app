@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'dart:math';
 import 'dart:typed_data';
+import 'package:flutter/foundation.dart';
 import 'package:camera/camera.dart';
 import 'package:google_mlkit_face_detection/google_mlkit_face_detection.dart';
 import 'package:tflite_flutter/tflite_flutter.dart';
@@ -21,7 +22,7 @@ class MLService {
         options: options,
       );
     } catch (e) {
-      print('Failed to load model: $e');
+      debugPrint('Failed to load model: $e');
     }
   }
 
@@ -166,7 +167,7 @@ class MLService {
     double distance = euclideanDistance(e1, e2);
     bool isMatched = distance < threshold;
     // Log yang lebih jelas untuk memantau akurasi secara realtime
-    print(
+    debugPrint(
       '🔍 Jarak Wajah: ${distance.toStringAsFixed(4)} -> ${isMatched ? "✅ COCOK" : "❌ TIDAK COCOK"}',
     );
     return isMatched;

@@ -47,8 +47,11 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Future<void> _handleBiometricLogin() async {
+    final l10n = AppLocalizations.of(context);
     try {
-      final authenticated = await _biometricService.authenticate();
+      final authenticated = await _biometricService.authenticate(
+        localizedReason: l10n.biometricReason,
+      );
       if (authenticated) {
         final prefs = await SharedPreferences.getInstance();
         final email = prefs.getString(StorageKeys.savedEmail);
@@ -159,8 +162,8 @@ class _LoginScreenState extends State<LoginScreen> {
       prefixIcon: Icon(icon, color: Colors.blue.shade800),
       filled: true,
       fillColor: isDark
-          ? Colors.white.withOpacity(0.9)
-          : Colors.white.withOpacity(0.75),
+          ? Colors.white.withValues(alpha: 0.9)
+          : Colors.white.withValues(alpha: 0.75),
       contentPadding: const EdgeInsets.symmetric(vertical: 18),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(18),
@@ -223,7 +226,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   child: Text(
                     l10n.welcomeBack,
                     style: TextStyle(
-                      color: Colors.white.withOpacity(0.9),
+                      color: Colors.white.withValues(alpha: 0.9),
                       fontSize: 18,
                     ),
                   ),
@@ -248,8 +251,8 @@ class _LoginScreenState extends State<LoginScreen> {
                 child: Container(
                   decoration: BoxDecoration(
                     color: isDark
-                        ? Colors.grey[900]!.withOpacity(0.95)
-                        : Colors.white.withOpacity(0.85),
+                        ? Colors.grey[900]!.withValues(alpha: 0.95)
+                        : Colors.white.withValues(alpha: 0.85),
                     borderRadius: const BorderRadius.only(
                       topLeft: Radius.circular(50),
                       topRight: Radius.circular(50),

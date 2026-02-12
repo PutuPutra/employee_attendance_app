@@ -75,6 +75,11 @@ class AppLocalizations {
       _localizedValues[locale.languageCode]!['invalid_date_range']!;
   String get endDateBeforeStartDate =>
       _localizedValues[locale.languageCode]!['end_date_before_start_date']!;
+  String get noHistoryFound =>
+      _localizedValues[locale.languageCode]!['no_history_found']!;
+  String get completeAccountDataFirst =>
+      _localizedValues[locale.languageCode]!['complete_account_data_first']!;
+  String get idLabel => _localizedValues[locale.languageCode]!['id_label']!;
 
   // Days
   String get monday => _localizedValues[locale.languageCode]!['monday']!;
@@ -151,6 +156,18 @@ class AppLocalizations {
       _localizedValues[locale.languageCode]!['biometric_login']!;
   String get biometricLoginDesc =>
       _localizedValues[locale.languageCode]!['biometric_login_desc']!;
+  String get biometricReason =>
+      _localizedValues[locale.languageCode]!['biometric_reason']!;
+  String get biometricNotAvailable =>
+      _localizedValues[locale.languageCode]!['biometric_not_available']!;
+  String get biometricNotEnrolled =>
+      _localizedValues[locale.languageCode]!['biometric_not_enrolled']!;
+  String get biometricNoCredentials =>
+      _localizedValues[locale.languageCode]!['biometric_no_credentials']!;
+  String get biometricLockout =>
+      _localizedValues[locale.languageCode]!['biometric_lockout']!;
+  String get biometricAuthFailed =>
+      _localizedValues[locale.languageCode]!['biometric_auth_failed']!;
   String get changePassword =>
       _localizedValues[locale.languageCode]!['change_password']!;
   String get account => _localizedValues[locale.languageCode]!['account']!;
@@ -158,6 +175,41 @@ class AppLocalizations {
       _localizedValues[locale.languageCode]!['edit_profile']!;
   String get editProfileDesc =>
       _localizedValues[locale.languageCode]!['edit_profile_desc']!;
+
+  // Account Settings
+  String get accountPersonalization =>
+      _localizedValues[locale.languageCode]!['account_personalization']!;
+  String get employeeIdLabel =>
+      _localizedValues[locale.languageCode]!['employee_id_label']!;
+  String get generatingId =>
+      _localizedValues[locale.languageCode]!['generating_id']!;
+  String get accountData =>
+      _localizedValues[locale.languageCode]!['account_data']!;
+  String get username => _localizedValues[locale.languageCode]!['username']!;
+  String get usernameRequired =>
+      _localizedValues[locale.languageCode]!['username_required']!;
+  String get emailAddress =>
+      _localizedValues[locale.languageCode]!['email_address']!;
+  String get regionLabel =>
+      _localizedValues[locale.languageCode]!['region_label']!;
+  String get regionRequired =>
+      _localizedValues[locale.languageCode]!['region_required']!;
+  String get locationLabel =>
+      _localizedValues[locale.languageCode]!['location_label']!;
+  String get locationRequired =>
+      _localizedValues[locale.languageCode]!['location_required']!;
+  String get saveChanges =>
+      _localizedValues[locale.languageCode]!['save_changes']!;
+  String get userNotFoundLoginAgain =>
+      _localizedValues[locale.languageCode]!['user_not_found_login_again']!;
+  String get sessionExpired =>
+      _localizedValues[locale.languageCode]!['session_expired']!;
+  String get changesSaved =>
+      _localizedValues[locale.languageCode]!['changes_saved']!;
+  String get failedToSave =>
+      _localizedValues[locale.languageCode]!['failed_to_save']!;
+  String get invalidEmail =>
+      _localizedValues[locale.languageCode]!['invalid_email']!;
 
   // Theme options
   String get themeSystem =>
@@ -299,6 +351,9 @@ class AppLocalizations {
       'invalid_date_range': 'Invalid Date Range',
       'end_date_before_start_date':
           'End date cannot be earlier than start date',
+      'no_history_found': 'No history found',
+      'complete_account_data_first': 'Please complete account data first.',
+      'id_label': 'ID',
 
       // Days
       'monday': 'Monday',
@@ -351,10 +406,34 @@ class AppLocalizations {
       'security': 'SECURITY',
       'biometric_login': 'Biometric Login',
       'biometric_login_desc': 'Use fingerprint or face unlock',
+      'biometric_reason': 'Please authenticate to enable biometric login.',
+      'biometric_not_available': 'Biometrics not available on this device.',
+      'biometric_not_enrolled': 'No biometrics enrolled on this device.',
+      'biometric_no_credentials': 'No device credentials (PIN/Pattern) set.',
+      'biometric_lockout':
+          'Biometrics temporarily locked due to too many failed attempts.',
+      'biometric_auth_failed': 'Authentication failed.',
       'change_password': 'Change Password',
       'account': 'Account',
       'edit_profile': 'Edit Profile',
       'edit_profile_desc': 'Change your username and email',
+      'account_personalization': 'Account Personalization',
+      'employee_id_label': 'Employee ID',
+      'generating_id': 'Generating ID...',
+      'account_data': 'Account Data',
+      'username': 'Username',
+      'username_required': 'Username cannot be empty',
+      'email_address': 'Email Address',
+      'region_label': 'Region',
+      'region_required': 'Region cannot be empty',
+      'location_label': 'Location / PT',
+      'location_required': 'Location cannot be empty',
+      'save_changes': 'Save Changes',
+      'user_not_found_login_again': 'User not found. Please login again.',
+      'session_expired': 'Session expired. Please login again.',
+      'changes_saved': 'Changes saved successfully!',
+      'failed_to_save': 'Failed to save changes',
+      'invalid_email': 'Please enter a valid email address',
 
       // Theme options
       'theme_system': 'System',
@@ -457,6 +536,10 @@ class AppLocalizations {
       'invalid_date_range': 'Rentang Tanggal Salah',
       'end_date_before_start_date':
           'Tanggal akhir tidak boleh lebih awal dari tanggal mulai',
+      'no_history_found': 'Riwayat tidak ditemukan',
+      'complete_account_data_first':
+          'Silakan lengkapi data akun terlebih dahulu.',
+      'id_label': 'ID',
 
       // Days
       'monday': 'Senin',
@@ -509,10 +592,37 @@ class AppLocalizations {
       'security': 'KEAMANAN',
       'biometric_login': 'Login Biometrik',
       'biometric_login_desc': 'Gunakan sidik jari atau pengenalan wajah',
+      'biometric_reason':
+          'Silakan otentikasi untuk mengaktifkan login biometrik.',
+      'biometric_not_available': 'Biometrik tidak tersedia di perangkat ini.',
+      'biometric_not_enrolled': 'Tidak ada biometrik yang terdaftar.',
+      'biometric_no_credentials':
+          'Tidak ada PIN/Pola yang diatur di perangkat.',
+      'biometric_lockout':
+          'Biometrik terkunci sementara karena terlalu banyak kegagalan.',
+      'biometric_auth_failed': 'Otentikasi gagal.',
       'change_password': 'Ubah Kata Sandi',
       'account': 'Akun',
       'edit_profile': 'Edit Profil',
       'edit_profile_desc': 'Ubah username dan email Anda',
+      'account_personalization': 'Personalisasi Akun',
+      'employee_id_label': 'ID Karyawan',
+      'generating_id': 'Membuat ID...',
+      'account_data': 'Data Akun',
+      'username': 'Username',
+      'username_required': 'Username tidak boleh kosong',
+      'email_address': 'Alamat Email',
+      'region_label': 'Region / Wilayah',
+      'region_required': 'Region tidak boleh kosong',
+      'location_label': 'Lokasi / PT',
+      'location_required': 'Lokasi tidak boleh kosong',
+      'save_changes': 'Simpan Perubahan',
+      'user_not_found_login_again':
+          'Pengguna tidak ditemukan. Silakan login kembali.',
+      'session_expired': 'Sesi berakhir. Silakan login kembali.',
+      'changes_saved': 'Perubahan berhasil disimpan!',
+      'failed_to_save': 'Gagal menyimpan perubahan',
+      'invalid_email': 'Masukkan alamat email yang valid',
 
       // Theme options
       'theme_system': 'Sistem',

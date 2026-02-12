@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:local_auth/local_auth.dart';
 
@@ -18,38 +19,35 @@ class BiometricService {
 
       return availableBiometrics.isNotEmpty;
     } on PlatformException catch (e) {
-      print('Error checking biometrics: ${e.code} - ${e.message}');
+      debugPrint('Error checking biometrics: ${e.code} - ${e.message}');
       return false;
     }
   }
 
   /// Melakukan autentikasi biometrik
-  Future<bool> authenticate() async {
+  Future<bool> authenticate({required String localizedReason}) async {
     try {
       return await _auth.authenticate(
-        localizedReason:
-            'Silakan otentikasi untuk mengaktifkan login biometrik',
+        localizedReason: localizedReason,
         biometricOnly:
             false, // Ubah ke true kalo udah fix, ini allow fallback PIN buat tes
         persistAcrossBackgrounding: true,
       );
     } on LocalAuthException catch (e) {
-      print(
+      debugPrint(
         'Error authenticating: ${e.code} - ${e.description} - Details: ${e.details}',
       );
       // Handle error spesifik
       if (e.code == LocalAuthExceptionCode.noBiometricHardware) {
-        throw Exception('Biometrik tidak tersedia atau tidak diaktifkan.');
+        throw Exception('BIOMETRIC_NOT_AVAILABLE');
       } else if (e.code == LocalAuthExceptionCode.noBiometricsEnrolled) {
-        throw Exception('Tidak ada biometrik yang terdaftar di perangkat ini.');
+        throw Exception('BIOMETRIC_NOT_ENROLLED');
       } else if (e.code == LocalAuthExceptionCode.noCredentialsSet) {
-        throw Exception('Tidak ada passcode/PIN yang diset di perangkat.');
+        throw Exception('BIOMETRIC_NO_CREDENTIALS');
       } else if (e.code == LocalAuthExceptionCode.temporaryLockout) {
-        throw Exception(
-          'Biometrik terkunci sementara karena terlalu banyak kegagalan.',
-        );
+        throw Exception('BIOMETRIC_LOCKOUT');
       } else {
-        throw Exception('Autentikasi gagal: ${e.description}');
+        throw Exception('BIOMETRIC_AUTH_FAILED');
       }
     }
   }
