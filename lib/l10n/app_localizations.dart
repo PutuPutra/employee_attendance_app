@@ -303,6 +303,8 @@ class AppLocalizations {
       _localizedValues[locale.languageCode]!['searching_location']!;
   String get locationUnknown =>
       _localizedValues[locale.languageCode]!['location_unknown']!;
+  String get failedToDecodeImage =>
+      _localizedValues[locale.languageCode]!['failed_to_decode_image']!;
 
   // Attendance Warning
   String get earlyAttendance =>
@@ -493,6 +495,7 @@ class AppLocalizations {
       'location_not_found': 'Location not found',
       'searching_location': 'Searching location...',
       'location_unknown': 'Location status unknown.',
+      'failed_to_decode_image': 'Failed to decode image file',
 
       // Attendance Warning
       'early_attendance': 'Early Attendance',
@@ -683,6 +686,7 @@ class AppLocalizations {
       'location_not_found': 'Lokasi belum ditemukan',
       'searching_location': 'Mencari lokasi...',
       'location_unknown': 'Status lokasi tidak diketahui.',
+      'failed_to_decode_image': 'Gagal men-decode file gambar',
 
       // Attendance Warning
       'early_attendance': 'Absensi Lebih Awal',

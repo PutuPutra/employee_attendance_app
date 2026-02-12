@@ -79,7 +79,7 @@ class FaceScreenView extends StatelessWidget {
                     ),
                   ),
                   Container(
-                    width: 280,
+                    width: 300,
                     height: 380,
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(16),

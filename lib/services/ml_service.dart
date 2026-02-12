@@ -48,7 +48,7 @@ class MLService {
   Future<List<double>> getEmbeddingFromFile(File file, Face face) async {
     final bytes = await file.readAsBytes();
     final image = img.decodeImage(bytes);
-    if (image == null) throw Exception("Gagal decode gambar file");
+    if (image == null) throw Exception("failed_to_decode_image");
 
     // FIX: Perbaiki orientasi gambar berdasarkan EXIF agar cropping wajah akurat
     final fixedImage = img.bakeOrientation(image);

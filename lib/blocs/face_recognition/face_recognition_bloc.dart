@@ -99,7 +99,11 @@ class FaceRecognitionBloc
         faceDetector.close();
       }
     } catch (e) {
-      emit(FaceRecognitionFailure("Gagal memuat data wajah: $e"));
+      String message = e.toString();
+      if (message.startsWith("Exception: ")) {
+        message = message.replaceFirst("Exception: ", "");
+      }
+      emit(FaceRecognitionFailure(message));
     }
   }
 

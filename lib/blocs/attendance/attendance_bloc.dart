@@ -73,8 +73,8 @@ class AttendanceBloc extends Bloc<AttendanceEvent, AttendanceState> {
       // Tentukan statusCheckIn (1: Tepat Waktu, 2: Terlambat)
       final limitTime = DateTime(now.year, now.month, now.day, hour, minute, 0);
 
-      // Toleransi 1 menit. Jika lebih dari 1 menit (misal 07:01:01), maka terlambat.
-      final lateThreshold = limitTime.add(const Duration(minutes: 1));
+      // Toleransi 5 menit. Jika lebih dari 5 menit, maka terlambat.
+      final lateThreshold = limitTime.add(const Duration(minutes: 5));
       final statusCheckIn = now.isAfter(lateThreshold) ? 2 : 1;
 
       // Selalu simpan data baru (Add Document)
