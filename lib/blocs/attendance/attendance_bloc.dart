@@ -111,6 +111,18 @@ class AttendanceBloc extends Bloc<AttendanceEvent, AttendanceState> {
         'date': dateStr, // Disimpan untuk memudahkan query per hari
       });
 
+      // Hapus file lokal jika upload berhasil untuk menghemat storage
+      if (imageUrl != null) {
+        try {
+          final file = File(event.imagePath);
+          if (await file.exists()) {
+            await file.delete();
+          }
+        } catch (e) {
+          print("Warning: Gagal menghapus file lokal: $e");
+        }
+      }
+
       emit(AttendanceSuccess());
     } catch (e) {
       emit(AttendanceFailure(error: e.toString()));

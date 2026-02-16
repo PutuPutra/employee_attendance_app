@@ -150,9 +150,19 @@ class _FaceScanViewState extends State<FaceScanView> {
     );
     if (!await launchUrl(url, mode: LaunchMode.externalApplication)) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(l10n.cannotOpenMap)));
+        showCupertinoDialog(
+          context: context,
+          builder: (ctx) => CupertinoAlertDialog(
+            title: Text(l10n.error),
+            content: Text(l10n.cannotOpenMap),
+            actions: [
+              CupertinoDialogAction(
+                child: const Text('OK'),
+                onPressed: () => Navigator.pop(ctx),
+              ),
+            ],
+          ),
+        );
       }
     }
   }
@@ -180,9 +190,19 @@ class _FaceScanViewState extends State<FaceScanView> {
 
     if (locationState is! LocationSuccess) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(l10n.locationNotFound)));
+        showCupertinoDialog(
+          context: context,
+          builder: (ctx) => CupertinoAlertDialog(
+            title: Text(l10n.error),
+            content: Text(l10n.locationNotFound),
+            actions: [
+              CupertinoDialogAction(
+                child: const Text('OK'),
+                onPressed: () => Navigator.pop(ctx),
+              ),
+            ],
+          ),
+        );
       }
       return;
     }
@@ -214,9 +234,19 @@ class _FaceScanViewState extends State<FaceScanView> {
     } catch (e) {
       if (mounted) {
         setState(() => _isSubmittingAuto = false);
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('${l10n.error}: $e')));
+        showCupertinoDialog(
+          context: context,
+          builder: (ctx) => CupertinoAlertDialog(
+            title: Text(l10n.error),
+            content: Text('$e'),
+            actions: [
+              CupertinoDialogAction(
+                child: const Text('OK'),
+                onPressed: () => Navigator.pop(ctx),
+              ),
+            ],
+          ),
+        );
       }
     }
   }
@@ -231,19 +261,35 @@ class _FaceScanViewState extends State<FaceScanView> {
         BlocListener<AttendanceBloc, AttendanceState>(
           listener: (context, state) {
             if (state is AttendanceSuccess) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
+              showCupertinoDialog(
+                context: context,
+                builder: (ctx) => CupertinoAlertDialog(
+                  title: const Text('Berhasil'),
                   content: Text(l10n.attendanceSuccess),
-                  backgroundColor: Colors.green,
+                  actions: [
+                    CupertinoDialogAction(
+                      child: const Text('OK'),
+                      onPressed: () {
+                        Navigator.pop(ctx); // Tutup Dialog
+                        Navigator.pop(context); // Kembali ke Home
+                      },
+                    ),
+                  ],
                 ),
               );
-              Navigator.pop(context);
             } else if (state is AttendanceFailure) {
               setState(() => _isSubmittingAuto = false);
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text('${l10n.attendanceFailed} ${state.error}'),
-                  backgroundColor: Colors.red,
+              showCupertinoDialog(
+                context: context,
+                builder: (ctx) => CupertinoAlertDialog(
+                  title: Text(l10n.error),
+                  content: Text('${l10n.attendanceFailed}\n${state.error}'),
+                  actions: [
+                    CupertinoDialogAction(
+                      child: const Text('OK'),
+                      onPressed: () => Navigator.pop(ctx),
+                    ),
+                  ],
                 ),
               );
             }
@@ -266,8 +312,18 @@ class _FaceScanViewState extends State<FaceScanView> {
                 errorMsg = l10n.loginRequired;
               }
 
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text(errorMsg), backgroundColor: Colors.red),
+              showCupertinoDialog(
+                context: context,
+                builder: (ctx) => CupertinoAlertDialog(
+                  title: Text(l10n.error),
+                  content: Text(errorMsg),
+                  actions: [
+                    CupertinoDialogAction(
+                      child: const Text('OK'),
+                      onPressed: () => Navigator.pop(ctx),
+                    ),
+                  ],
+                ),
               );
             }
           },

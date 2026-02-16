@@ -23,6 +23,7 @@ class _HomeScreenState extends State<HomeScreen> {
   DateTime? startDate;
   DateTime? endDate;
   String? _employeeId;
+  String? _region;
   bool _isFaceRegistered = false;
   StreamSubscription<DocumentSnapshot>? _userSubscription;
   StreamSubscription<QuerySnapshot>? _faceRegisterSubscription;
@@ -55,16 +56,21 @@ class _HomeScreenState extends State<HomeScreen> {
             (snapshot) {
               final data = snapshot.data() as Map<String, dynamic>?;
               final newEmployeeId = data?['employeeId']?.toString() ?? '';
+              final newRegion = data?['region']?.toString() ?? '';
 
-              // Jika employeeId berubah, update state dan listener face register
-              if (_employeeId != newEmployeeId) {
+              // Jika employeeId atau region berubah, update state
+              if (_employeeId != newEmployeeId || _region != newRegion) {
+                final bool idChanged = _employeeId != newEmployeeId;
                 if (mounted) {
                   setState(() {
                     _employeeId = newEmployeeId;
+                    _region = newRegion;
                   });
                 }
-                _updateFaceRegisterListener(newEmployeeId);
-                _updateTodayAttendanceListener(newEmployeeId);
+                if (idChanged) {
+                  _updateFaceRegisterListener(newEmployeeId);
+                  _updateTodayAttendanceListener(newEmployeeId);
+                }
               }
             },
             onError: (e) {
@@ -335,20 +341,24 @@ class _HomeScreenState extends State<HomeScreen> {
                                               ),
                                             ),
                                     ),
-                                    _IOSActionCard(
-                                      title: l10n.break_,
-                                      icon: CupertinoIcons.clock,
-                                      color: CupertinoColors.systemOrange,
-                                      onTap: () =>
-                                          _handleAttendanceAction('breakStart'),
-                                    ),
-                                    _IOSActionCard(
-                                      title: l10n.return_,
-                                      icon: CupertinoIcons.arrow_turn_down_left,
-                                      color: CupertinoColors.systemGreen,
-                                      onTap: () =>
-                                          _handleAttendanceAction('breakEnd'),
-                                    ),
+                                    if (_region != 'Head Office') ...[
+                                      _IOSActionCard(
+                                        title: l10n.break_,
+                                        icon: CupertinoIcons.clock,
+                                        color: CupertinoColors.systemOrange,
+                                        onTap: () => _handleAttendanceAction(
+                                          'breakStart',
+                                        ),
+                                      ),
+                                      _IOSActionCard(
+                                        title: l10n.return_,
+                                        icon: CupertinoIcons.arrow_turn_down_left,
+                                        color: CupertinoColors.systemGreen,
+                                        onTap: () => _handleAttendanceAction(
+                                          'breakEnd',
+                                        ),
+                                      ),
+                                    ],
                                     _IOSActionCard(
                                       title: l10n.checkOut,
                                       icon: CupertinoIcons.arrow_right_square,
@@ -590,7 +600,10 @@ class _HomeScreenState extends State<HomeScreen> {
                                       itemCount: historyList.length,
                                       itemBuilder: (context, index) {
                                         final data = historyList[index];
-                                        return _IOSHistoryCard(data: data);
+                                        return _IOSHistoryCard(
+                                          data: data,
+                                          region: _region,
+                                        );
                                       },
                                     );
                                   },
@@ -933,8 +946,9 @@ class _IOSActionCard extends StatelessWidget {
 /// ================= HISTORY CARD =================
 class _IOSHistoryCard extends StatelessWidget {
   final Map<String, dynamic> data;
+  final String? region;
 
-  const _IOSHistoryCard({super.key, required this.data});
+  const _IOSHistoryCard({super.key, required this.data, this.region});
 
   String _formatTime(dynamic timestamp) {
     if (timestamp == null) return '--:--';
@@ -1000,8 +1014,10 @@ class _IOSHistoryCard extends StatelessWidget {
                   time: _formatTime(checkIn),
                   isLate: isLate,
                 ),
-                _Time(label: l10n.breakTime, time: _formatTime(breakStart)),
-                _Time(label: l10n.returnTime, time: _formatTime(breakEnd)),
+                if (region != 'Head Office') ...[
+                  _Time(label: l10n.breakTime, time: _formatTime(breakStart)),
+                  _Time(label: l10n.returnTime, time: _formatTime(breakEnd)),
+                ],
                 _Time(label: l10n.exit, time: _formatTime(checkOut)),
               ],
             ),
