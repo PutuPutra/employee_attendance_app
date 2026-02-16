@@ -174,19 +174,49 @@ class _FaceScanViewState extends State<FaceScanView> {
   Future<void> _submitAttendance() async {
     if (_isSubmittingAuto) return;
 
-    final l10n = AppLocalizations.of(context);
-    final locationState = context.read<LocationBloc>().state;
-
-    if (locationState is! LocationSuccess) {
-      if (mounted) {
-        _showTopNotification(context, l10n.locationNotFound, isError: true);
-      }
-      return;
-    }
-
+    // 1. Kunci proses submit agar tidak dipanggil berulang
     setState(() {
       _isSubmittingAuto = true;
     });
+
+    final l10n = AppLocalizations.of(context);
+    var locationState = context.read<LocationBloc>().state;
+
+    // 2. Jika lokasi masih loading, tunggu stream sampai dapat hasil (Success/Failure)
+    if (locationState is LocationLoading || locationState is LocationInitial) {
+      if (mounted) {
+        _showTopNotification(context, l10n.searchingLocation);
+      }
+      try {
+        locationState = await context
+            .read<LocationBloc>()
+            .stream
+            .firstWhere(
+              (state) => state is LocationSuccess || state is LocationFailure,
+            )
+            .timeout(const Duration(seconds: 10));
+      } catch (e) {
+        // Timeout atau error stream
+        if (mounted) {
+          setState(() => _isSubmittingAuto = false);
+          _showTopNotification(context, l10n.locationNotFound, isError: true);
+        }
+        return;
+      }
+    }
+
+    // 3. Validasi akhir lokasi
+    if (locationState is! LocationSuccess) {
+      if (mounted) {
+        setState(() => _isSubmittingAuto = false);
+        String msg = l10n.locationNotFound;
+        if (locationState is LocationFailure) {
+          msg = locationState.error;
+        }
+        _showTopNotification(context, msg, isError: true);
+      }
+      return;
+    }
 
     try {
       final XFile? image = await _cameraService.takePicture();
@@ -341,69 +371,7 @@ class _FaceScanViewState extends State<FaceScanView> {
                   const SizedBox(height: 10),
                   _buildLocationSection(),
                   const Spacer(),
-                  BlocBuilder<FaceRecognitionBloc, FaceRecognitionState>(
-                    builder: (context, faceState) {
-                      final isMatched = faceState is FaceMatched;
-
-                      return BlocBuilder<AttendanceBloc, AttendanceState>(
-                        builder: (context, attendanceState) {
-                          final isSubmitting =
-                              attendanceState is AttendanceLoading ||
-                              _isSubmittingAuto;
-
-                          // Teks tombol dinamis
-                          String buttonText = '';
-                          if (isSubmitting) {
-                            buttonText = l10n.loading;
-                          } else if (isMatched) {
-                            buttonText = l10n.submit;
-                          } else {
-                            // Jika belum match, beri hint untuk berkedip
-                            // (Asumsi: jika wajah terdeteksi tapi belum match, mungkin karena belum blink)
-                            if (faceState is FaceNotMatched) {
-                              // Cek konfigurasi dari Bloc
-                              if (FaceRecognitionBloc.isLivenessEnabled) {
-                                buttonText = l10n
-                                    .faceNotMatchBlink; // "Wajah Tidak Cocok / Silakan Berkedip"
-                              } else {
-                                buttonText = l10n
-                                    .faceNotMatch; // "Wajah Tidak Cocok" (BARU)
-                              }
-                            } else {
-                              // Provide a default text when face is not being processed.
-                              // This can be an empty string or a message like "Scan Face"
-                              buttonText =
-                                  ''; // Or buttonText = l10n.scanFace; with "scanFace" added to AppLocalizations
-                            }
-                          }
-
-                          return ElevatedButton(
-                            onPressed: (isMatched && !isSubmitting)
-                                ? _submitAttendance
-                                : null, // Disable jika wajah tidak match
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: isMatched
-                                  ? Colors.green
-                                  : Colors.grey,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(20),
-                              ),
-                              minimumSize: const Size(double.infinity, 50),
-                            ),
-                            child: isSubmitting
-                                ? const CupertinoActivityIndicator(
-                                    color: Colors.white,
-                                  )
-                                : Text(
-                                    buttonText,
-                                    style: const TextStyle(color: Colors.white),
-                                  ),
-                          );
-                        },
-                      );
-                    },
-                  ),
-                  const SizedBox(height: 10),
+                  const SizedBox(height: 20),
                 ],
               ),
             ),
