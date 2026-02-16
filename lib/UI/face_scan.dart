@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:animate_do/animate_do.dart'; // Tambahkan import ini
 import 'package:camera/camera.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
@@ -150,19 +151,7 @@ class _FaceScanViewState extends State<FaceScanView> {
     );
     if (!await launchUrl(url, mode: LaunchMode.externalApplication)) {
       if (mounted) {
-        showCupertinoDialog(
-          context: context,
-          builder: (ctx) => CupertinoAlertDialog(
-            title: Text(l10n.error),
-            content: Text(l10n.cannotOpenMap),
-            actions: [
-              CupertinoDialogAction(
-                child: const Text('OK'),
-                onPressed: () => Navigator.pop(ctx),
-              ),
-            ],
-          ),
-        );
+        _showTopNotification(context, l10n.cannotOpenMap, isError: true);
       }
     }
   }
@@ -190,19 +179,7 @@ class _FaceScanViewState extends State<FaceScanView> {
 
     if (locationState is! LocationSuccess) {
       if (mounted) {
-        showCupertinoDialog(
-          context: context,
-          builder: (ctx) => CupertinoAlertDialog(
-            title: Text(l10n.error),
-            content: Text(l10n.locationNotFound),
-            actions: [
-              CupertinoDialogAction(
-                child: const Text('OK'),
-                onPressed: () => Navigator.pop(ctx),
-              ),
-            ],
-          ),
-        );
+        _showTopNotification(context, l10n.locationNotFound, isError: true);
       }
       return;
     }
@@ -234,19 +211,7 @@ class _FaceScanViewState extends State<FaceScanView> {
     } catch (e) {
       if (mounted) {
         setState(() => _isSubmittingAuto = false);
-        showCupertinoDialog(
-          context: context,
-          builder: (ctx) => CupertinoAlertDialog(
-            title: Text(l10n.error),
-            content: Text('$e'),
-            actions: [
-              CupertinoDialogAction(
-                child: const Text('OK'),
-                onPressed: () => Navigator.pop(ctx),
-              ),
-            ],
-          ),
-        );
+        _showTopNotification(context, '$e', isError: true);
       }
     }
   }
@@ -261,36 +226,19 @@ class _FaceScanViewState extends State<FaceScanView> {
         BlocListener<AttendanceBloc, AttendanceState>(
           listener: (context, state) {
             if (state is AttendanceSuccess) {
-              showCupertinoDialog(
-                context: context,
-                builder: (ctx) => CupertinoAlertDialog(
-                  title: const Text('Berhasil'),
-                  content: Text(l10n.attendanceSuccess),
-                  actions: [
-                    CupertinoDialogAction(
-                      child: const Text('OK'),
-                      onPressed: () {
-                        Navigator.pop(ctx); // Tutup Dialog
-                        Navigator.pop(context); // Kembali ke Home
-                      },
-                    ),
-                  ],
-                ),
-              );
+              _showTopNotification(context, l10n.attendanceSuccess);
+              // Delay sebentar agar user sempat melihat notifikasi sukses sebelum kembali
+              Future.delayed(const Duration(seconds: 2), () {
+                if (mounted) {
+                  Navigator.pop(context);
+                }
+              });
             } else if (state is AttendanceFailure) {
               setState(() => _isSubmittingAuto = false);
-              showCupertinoDialog(
-                context: context,
-                builder: (ctx) => CupertinoAlertDialog(
-                  title: Text(l10n.error),
-                  content: Text('${l10n.attendanceFailed}\n${state.error}'),
-                  actions: [
-                    CupertinoDialogAction(
-                      child: const Text('OK'),
-                      onPressed: () => Navigator.pop(ctx),
-                    ),
-                  ],
-                ),
+              _showTopNotification(
+                context,
+                '${l10n.attendanceFailed}\n${state.error}',
+                isError: true,
               );
             }
           },
@@ -312,19 +260,7 @@ class _FaceScanViewState extends State<FaceScanView> {
                 errorMsg = l10n.loginRequired;
               }
 
-              showCupertinoDialog(
-                context: context,
-                builder: (ctx) => CupertinoAlertDialog(
-                  title: Text(l10n.error),
-                  content: Text(errorMsg),
-                  actions: [
-                    CupertinoDialogAction(
-                      child: const Text('OK'),
-                      onPressed: () => Navigator.pop(ctx),
-                    ),
-                  ],
-                ),
-              );
+              _showTopNotification(context, errorMsg, isError: true);
             }
           },
         ),
@@ -548,5 +484,66 @@ class _FaceScanViewState extends State<FaceScanView> {
         );
       },
     );
+  }
+
+  void _showTopNotification(
+    BuildContext context,
+    String message, {
+    bool isError = false,
+  }) {
+    final overlay = Overlay.of(context);
+    final overlayEntry = OverlayEntry(
+      builder: (context) => Positioned(
+        top: MediaQuery.of(context).padding.top + 10,
+        left: 20,
+        right: 20,
+        child: Material(
+          color: Colors.transparent,
+          child: FadeInDown(
+            duration: const Duration(milliseconds: 500),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              decoration: BoxDecoration(
+                color: isError ? Colors.redAccent : Colors.green,
+                borderRadius: BorderRadius.circular(12),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.2),
+                    blurRadius: 8,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    isError ? Icons.error_outline : Icons.check_circle_outline,
+                    color: Colors.white,
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      message,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    overlay.insert(overlayEntry);
+
+    Future.delayed(const Duration(seconds: 3), () {
+      try {
+        overlayEntry.remove();
+      } catch (_) {}
+    });
   }
 }
