@@ -92,9 +92,9 @@ class _FaceScanViewState extends State<FaceScanView> {
     _cameraService.startImageStream((CameraImage image) {
       if (!mounted) return;
 
-      // THROTTLING: Hanya proses 1 frame setiap 10ms (sebelumnya 500ms)
+      // THROTTLING: Ubah ke 500ms agar device tua tidak kewalahan
       final currentTime = DateTime.now().millisecondsSinceEpoch;
-      if (currentTime - _lastFrameTime < 100) return;
+      if (currentTime - _lastFrameTime < 500) return;
       _lastFrameTime = currentTime;
 
       context.read<FaceRecognitionBloc>().add(

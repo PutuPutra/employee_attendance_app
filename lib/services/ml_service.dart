@@ -12,6 +12,7 @@ class MLService {
   // Threshold (Ambang Batas): Semakin KECIL semakin KETAT/AMAN.
   // 1.0 adalah standar yang seimbang. 1.2 agak longgar.
   double threshold = 1.0;
+  static const int inputSize = 112;
 
   Future<void> initialize() async {
     try {
@@ -32,16 +33,39 @@ class MLService {
     Face face,
     CameraDescription cameraDescription,
   ) async {
-    // 1. Convert YUV420 to RGB Image
-    img.Image image = _convertYUV420ToImage(cameraImage);
+    // Siapkan data untuk dikirim ke Isolate (Background Thread)
+    // Kita kirim bytes raw karena CameraImage tidak bisa dikirim langsung antar thread
+    final isolateData = IsolateData(
+      width: cameraImage.width,
+      height: cameraImage.height,
+      yPlane: cameraImage.planes[0].bytes,
+      uPlane: cameraImage.planes[1].bytes,
+      vPlane: cameraImage.planes[2].bytes,
+      yRowStride: cameraImage.planes[0].bytesPerRow,
+      uvRowStride: cameraImage.planes[1].bytesPerRow,
+      uvPixelStride: cameraImage.planes[1].bytesPerPixel!,
+      rotation: cameraDescription.sensorOrientation,
+      // Kirim koordinat wajah sebagai List sederhana
+      faceBounds: [
+        face.boundingBox.left,
+        face.boundingBox.top,
+        face.boundingBox.width,
+        face.boundingBox.height,
+      ],
+      isAndroid: Platform.isAndroid,
+    );
 
-    // 2. Rotate image based on sensor orientation to match Face coordinates
-    if (Platform.isAndroid) {
-      image = img.copyRotate(image, angle: cameraDescription.sensorOrientation);
-    }
+    // Jalankan pemrosesan berat di background thread
+    // Hasilnya adalah List input yang sudah siap untuk TFLite
+    final List input = await compute(_processCameraImageInIsolate, isolateData);
 
-    // 3. Preprocess (Crop & Resize)
-    return _processImage(image, face);
+    // Output array (biasanya 192 atau 128 dimensi)
+    List output = List.generate(1, (index) => List.filled(192, 0.0));
+
+    // Run Inference (Ringan, bisa di main thread)
+    _interpreter!.run(input, output);
+
+    return List<double>.from(output[0]);
   }
 
   /// Mendapatkan embedding dari File (Registered Image)
@@ -80,16 +104,16 @@ class MLService {
     // Resize ke 112x112 (Input standar MobileFaceNet)
     img.Image resizedImage = img.copyResize(
       croppedImage,
-      width: 112,
-      height: 112,
+      width: inputSize,
+      height: inputSize,
     );
 
     // Normalize & Prepare Input
     // MobileFaceNet biasanya butuh input [1, 112, 112, 3]
     // Nilai pixel dinormalisasi ke -1 s/d 1 atau 0 s/d 1 tergantung training modelnya.
     // Di sini kita pakai standard (pixel - 128) / 128
-    List input = _imageToByteListFloat32(resizedImage, 112, 128, 128);
-    input = input.reshape([1, 112, 112, 3]);
+    List input = _imageToByteListFloat32(resizedImage, inputSize, 128, 128);
+    input = input.reshape([1, inputSize, inputSize, 3]);
 
     // Output array (biasanya 192 atau 128 dimensi)
     List output = List.generate(1, (index) => List.filled(192, 0.0));
@@ -120,40 +144,6 @@ class MLService {
     return convertedBytes.toList();
   }
 
-  /// Konversi CameraImage (YUV420) ke img.Image (RGB)
-  img.Image _convertYUV420ToImage(CameraImage cameraImage) {
-    final int width = cameraImage.width;
-    final int height = cameraImage.height;
-    final int uvRowStride = cameraImage.planes[1].bytesPerRow;
-    final int uvPixelStride = cameraImage.planes[1].bytesPerPixel!;
-
-    final img.Image image = img.Image(width: width, height: height);
-
-    for (int w = 0; w < width; w++) {
-      for (int h = 0; h < height; h++) {
-        final int uvIndex =
-            uvPixelStride * (w / 2).floor() + uvRowStride * (h / 2).floor();
-        final int index = h * width + w;
-
-        final y = cameraImage.planes[0].bytes[index];
-        final u = cameraImage.planes[1].bytes[uvIndex];
-        final v = cameraImage.planes[2].bytes[uvIndex];
-
-        image.setPixelRgb(
-          w,
-          h,
-          (y + 1.402 * (v - 128)).toInt().clamp(0, 255),
-          (y - 0.344136 * (u - 128) - 0.714136 * (v - 128)).toInt().clamp(
-            0,
-            255,
-          ),
-          (y + 1.772 * (u - 128)).toInt().clamp(0, 255),
-        );
-      }
-    }
-    return image;
-  }
-
   /// Menghitung Euclidean Distance
   double euclideanDistance(List<double> e1, List<double> e2) {
     double sum = 0.0;
@@ -172,4 +162,117 @@ class MLService {
     );
     return isMatched;
   }
+}
+
+// --- ISOLATE LOGIC (Berjalan di background thread) ---
+
+class IsolateData {
+  final int width;
+  final int height;
+  final Uint8List yPlane;
+  final Uint8List uPlane;
+  final Uint8List vPlane;
+  final int yRowStride;
+  final int uvRowStride;
+  final int uvPixelStride;
+  final int rotation;
+  final List<double> faceBounds; // [left, top, width, height]
+  final bool isAndroid;
+
+  IsolateData({
+    required this.width,
+    required this.height,
+    required this.yPlane,
+    required this.uPlane,
+    required this.vPlane,
+    required this.yRowStride,
+    required this.uvRowStride,
+    required this.uvPixelStride,
+    required this.rotation,
+    required this.faceBounds,
+    required this.isAndroid,
+  });
+}
+
+// Fungsi Top-Level untuk dijalankan oleh compute()
+List _processCameraImageInIsolate(IsolateData data) {
+  // 1. Convert YUV420 to RGB (Berat!)
+  img.Image image = _convertYUV420ToImageInIsolate(data);
+
+  // 2. Rotate (Berat!)
+  if (data.isAndroid) {
+    image = img.copyRotate(image, angle: data.rotation);
+  }
+
+  // 3. Crop Face
+  double x = data.faceBounds[0] - 10.0;
+  double y = data.faceBounds[1] - 10.0;
+  double w = data.faceBounds[2] + 20.0;
+  double h = data.faceBounds[3] + 20.0;
+
+  if (x < 0) x = 0;
+  if (y < 0) y = 0;
+  if (x + w > image.width) w = image.width - x;
+  if (y + h > image.height) h = image.height - y;
+
+  img.Image croppedImage = img.copyCrop(
+    image,
+    x: x.toInt(),
+    y: y.toInt(),
+    width: w.toInt(),
+    height: h.toInt(),
+  );
+
+  // 4. Resize (Berat!)
+  img.Image resizedImage = img.copyResize(
+    croppedImage,
+    width: 112,
+    height: 112,
+  );
+
+  // 5. Normalize
+  var convertedBytes = Float32List(1 * 112 * 112 * 3);
+  var buffer = Float32List.view(convertedBytes.buffer);
+  int pixelIndex = 0;
+  for (var i = 0; i < 112; i++) {
+    for (var j = 0; j < 112; j++) {
+      var pixel = resizedImage.getPixel(j, i);
+      buffer[pixelIndex++] = (pixel.r - 128) / 128;
+      buffer[pixelIndex++] = (pixel.g - 128) / 128;
+      buffer[pixelIndex++] = (pixel.b - 128) / 128;
+    }
+  }
+
+  // Reshape input untuk TFLite [1, 112, 112, 3]
+  return convertedBytes.reshape([1, 112, 112, 3]);
+}
+
+img.Image _convertYUV420ToImageInIsolate(IsolateData data) {
+  final int width = data.width;
+  final int height = data.height;
+  final int uvRowStride = data.uvRowStride;
+  final int uvPixelStride = data.uvPixelStride;
+
+  final img.Image image = img.Image(width: width, height: height);
+
+  for (int w = 0; w < width; w++) {
+    for (int h = 0; h < height; h++) {
+      final int uvIndex =
+          uvPixelStride * (w / 2).floor() + uvRowStride * (h / 2).floor();
+      final int index = h * width + w;
+
+      final y = data.yPlane[index];
+      final u = data.uPlane[uvIndex];
+      final v = data.vPlane[uvIndex];
+
+      image.setPixelRgb(
+        w,
+        h,
+        (y + 1.402 * (v - 128)).toInt().clamp(0, 255),
+        (y - 0.344136 * (u - 128) - 0.714136 * (v - 128)).toInt().clamp(0, 255),
+        (y + 1.772 * (u - 128)).toInt().clamp(0, 255),
+      );
+    }
+  }
+  return image;
 }
