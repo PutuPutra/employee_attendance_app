@@ -352,11 +352,11 @@ class _HomeScreenState extends State<HomeScreen> {
                                       ),
                                       _IOSActionCard(
                                         title: l10n.return_,
-                                        icon: CupertinoIcons.arrow_turn_down_left,
+                                        icon:
+                                            CupertinoIcons.arrow_turn_down_left,
                                         color: CupertinoColors.systemGreen,
-                                        onTap: () => _handleAttendanceAction(
-                                          'breakEnd',
-                                        ),
+                                        onTap: () =>
+                                            _handleAttendanceAction('breakEnd'),
                                       ),
                                     ],
                                     _IOSActionCard(
@@ -625,6 +625,7 @@ class _HomeScreenState extends State<HomeScreen> {
   void _showDateRangeDialog(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final bottomPadding = MediaQuery.of(context).padding.bottom;
 
     showModalBottomSheet(
       context: context,
@@ -641,7 +642,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 16,
                 16,
                 16,
-                MediaQuery.of(context).viewInsets.bottom + 16,
+                MediaQuery.of(context).viewInsets.bottom + bottomPadding + 16,
               ),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
