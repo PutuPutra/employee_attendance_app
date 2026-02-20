@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:bloc/bloc.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:equatable/equatable.dart';
+import 'package:flutter/foundation.dart';
 import 'package:intl/intl.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
@@ -50,42 +51,108 @@ class AttendanceBloc extends Bloc<AttendanceEvent, AttendanceState> {
           break;
       }
 
-      // Tentukan batas waktu check-in berdasarkan region
-      int hour = 8;
-      int minute = 0;
+      // --- LOGIC PENENTUAN JAM MASUK (CASCADING SETTINGS) ---
 
-      switch (event.region) {
-        case 'Cilegon':
-          hour = 7;
-          minute = 0;
-          break;
-        case 'Head Office':
-          hour = 8;
-          minute = 0;
-          break;
-        case 'Sanggau':
-          hour = 9;
-          minute = 0;
-          break;
-        case 'Sintang':
-          hour = 8;
-          minute = 0;
-          break;
-        case 'Palangkaraya':
-          hour = 7;
-          minute = 30;
-          break;
-        default:
-          hour = 8; // Default
-          minute = 0;
+      // 1. Ambil Data User untuk mendapatkan company_id dan location_id
+      String? companyId;
+      String? locationId;
+
+      try {
+        final userQuery = await _firestore
+            .collection('users')
+            .where('id_karyawan', isEqualTo: event.employeeId)
+            .limit(1)
+            .get();
+
+        if (userQuery.docs.isNotEmpty) {
+          final userData = userQuery.docs.first.data();
+          companyId = userData['company_id']?.toString();
+          locationId = userData['location_id']?.toString();
+        }
+      } catch (e) {
+        debugPrint("Error fetching user data for settings: $e");
       }
 
-      // Tentukan statusCheckIn (1: Tepat Waktu, 2: Terlambat)
-      final limitTime = DateTime(now.year, now.month, now.day, hour, minute, 0);
+      // 2. Ambil Settings dari Company dan Location
+      String? scheduledCheckInTime;
 
-      // Toleransi 5 menit. Jika lebih dari 5 menit, maka terlambat.
-      final lateThreshold = limitTime.add(const Duration(minutes: 5));
-      final statusCheckIn = now.isAfter(lateThreshold) ? 2 : 1;
+      if (companyId != null) {
+        try {
+          final futures = <Future<DocumentSnapshot>>[
+            _firestore.collection('companies').doc(companyId).get(),
+          ];
+
+          if (locationId != null) {
+            futures.add(
+              _firestore.collection('locations').doc(locationId).get(),
+            );
+          }
+
+          final results = await Future.wait(futures);
+          final companyDoc = results[0];
+          final locationDoc = (results.length > 1) ? results[1] : null;
+
+          Map<String, dynamic>? companySettings;
+          if (companyDoc.exists) {
+            final data = companyDoc.data() as Map<String, dynamic>?;
+            if (data != null && data['settings'] != null) {
+              companySettings = data['settings'] as Map<String, dynamic>;
+            }
+          }
+
+          Map<String, dynamic>? locationSettings;
+          if (locationDoc != null && locationDoc.exists) {
+            final data = locationDoc.data() as Map<String, dynamic>?;
+            if (data != null && data['settings'] != null) {
+              locationSettings = data['settings'] as Map<String, dynamic>;
+            }
+          }
+
+          // Logic: Location > Company
+          if (locationSettings != null &&
+              locationSettings['check_in_time'] != null) {
+            scheduledCheckInTime = locationSettings['check_in_time']
+                ?.toString();
+          } else if (companySettings != null &&
+              companySettings['check_in_time'] != null) {
+            scheduledCheckInTime = companySettings['check_in_time']?.toString();
+          }
+        } catch (e) {
+          debugPrint("Error fetching settings: $e");
+        }
+      }
+
+      // 3. Tentukan Status CheckIn
+      // Default status adalah 1 (Tepat Waktu) jika tidak ada setting jam masuk di Firebase
+      int statusCheckIn = 1;
+
+      if (scheduledCheckInTime != null) {
+        try {
+          final parts = scheduledCheckInTime.split(':');
+          if (parts.length == 2) {
+            final int hour = int.parse(parts[0]);
+            final int minute = int.parse(parts[1]);
+
+            final limitTime = DateTime(
+              now.year,
+              now.month,
+              now.day,
+              hour,
+              minute,
+              0,
+            );
+
+            // Toleransi 5 menit. Jika lebih dari 5 menit, maka terlambat.
+            final lateThreshold = limitTime.add(const Duration(minutes: 5));
+
+            if (now.isAfter(lateThreshold)) {
+              statusCheckIn = 2;
+            }
+          }
+        } catch (e) {
+          debugPrint("Error parsing check_in_time: $e");
+        }
+      }
 
       // Upload to ImageKit (Backup Cloud)
       String? imageUrl;
@@ -93,12 +160,12 @@ class AttendanceBloc extends Bloc<AttendanceEvent, AttendanceState> {
         final fileName =
             '${event.employeeId}_attendance_${DateFormat('yyyyMMdd_HHmmss').format(now)}.jpg';
         if (_imageKitPrivateKey.isEmpty) {
-          print("Warning: IMAGEKIT_PRIVATE_KEY tidak ditemukan di .env");
+          debugPrint("Warning: IMAGEKIT_PRIVATE_KEY tidak ditemukan di .env");
         } else {
           imageUrl = await _uploadToImageKit(File(event.imagePath), fileName);
         }
       } catch (e) {
-        print("Warning: Gagal upload attendance ke ImageKit: $e");
+        debugPrint("Warning: Gagal upload attendance ke ImageKit: $e");
       }
 
       // Selalu simpan data baru (Add Document)
@@ -123,7 +190,7 @@ class AttendanceBloc extends Bloc<AttendanceEvent, AttendanceState> {
             await file.delete();
           }
         } catch (e) {
-          print("Warning: Gagal menghapus file lokal: $e");
+          debugPrint("Warning: Gagal menghapus file lokal: $e");
         }
       }
 

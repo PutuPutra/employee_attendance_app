@@ -93,6 +93,11 @@ class _FaceScanViewState extends State<FaceScanView> {
     _cameraService.startImageStream((CameraImage image) {
       if (!mounted) return;
 
+      // Cek status lokasi terlebih dahulu
+      // Jika lokasi belum sukses didapatkan, jangan proses wajah (skip frame ini)
+      final locationState = context.read<LocationBloc>().state;
+      if (locationState is! LocationSuccess) return;
+
       // THROTTLING: Ubah ke 500ms agar device tua tidak kewalahan
       final currentTime = DateTime.now().millisecondsSinceEpoch;
       if (currentTime - _lastFrameTime < 500) return;

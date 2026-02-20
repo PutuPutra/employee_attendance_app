@@ -1,6 +1,7 @@
 import 'dart:ui';
 import 'package:animate_do/animate_do.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'home_screen.dart';
@@ -117,10 +118,18 @@ class _LoginScreenState extends State<LoginScreen> {
       await prefs.setString(StorageKeys.savedPassword, password);
 
       if (mounted) {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (_) => const HomeScreen()),
-        );
+        final isBiometricAvailable = await _biometricService
+            .isBiometricAvailable();
+        final isBiometricEnabled =
+            prefs.getBool(StorageKeys.isBiometricEnabled) ?? false;
+
+        if (isBiometricAvailable && !isBiometricEnabled) {
+          final enable = await _showBiometricOfferDialog();
+          if (enable == true) {
+            await prefs.setBool(StorageKeys.isBiometricEnabled, true);
+          }
+        }
+        _navigateToHome();
       }
     } on FirebaseAuthException catch (e) {
       if (mounted) {
@@ -149,6 +158,36 @@ class _LoginScreenState extends State<LoginScreen> {
         setState(() => _isLoading = false);
       }
     }
+  }
+
+  void _navigateToHome() {
+    if (!mounted) return;
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (_) => const HomeScreen()),
+    );
+  }
+
+  Future<bool?> _showBiometricOfferDialog() async {
+    final l10n = AppLocalizations.of(context);
+    return showCupertinoDialog<bool>(
+      context: context,
+      builder: (context) => CupertinoAlertDialog(
+        title: Text(l10n.enableBiometricTitle),
+        content: Text(l10n.enableBiometricMessage),
+        actions: [
+          CupertinoDialogAction(
+            child: Text(l10n.later),
+            onPressed: () => Navigator.pop(context, false),
+          ),
+          CupertinoDialogAction(
+            isDefaultAction: true,
+            child: Text(l10n.enable),
+            onPressed: () => Navigator.pop(context, true),
+          ),
+        ],
+      ),
+    );
   }
 
   InputDecoration _iosInput(

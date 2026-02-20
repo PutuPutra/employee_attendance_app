@@ -168,6 +168,12 @@ class AppLocalizations {
       _localizedValues[locale.languageCode]!['biometric_lockout']!;
   String get biometricAuthFailed =>
       _localizedValues[locale.languageCode]!['biometric_auth_failed']!;
+  String get enableBiometricTitle =>
+      _localizedValues[locale.languageCode]!['enable_biometric_title']!;
+  String get enableBiometricMessage =>
+      _localizedValues[locale.languageCode]!['enable_biometric_message']!;
+  String get enable => _localizedValues[locale.languageCode]!['enable']!;
+  String get later => _localizedValues[locale.languageCode]!['later']!;
   String get changePassword =>
       _localizedValues[locale.languageCode]!['change_password']!;
   String get account => _localizedValues[locale.languageCode]!['account']!;
@@ -438,6 +444,11 @@ class AppLocalizations {
       'biometric_lockout':
           'Biometrics temporarily locked due to too many failed attempts.',
       'biometric_auth_failed': 'Authentication failed.',
+      'enable_biometric_title': 'Enable Biometric Login?',
+      'enable_biometric_message':
+          'Login faster using your fingerprint or face.',
+      'enable': 'Enable',
+      'later': 'Later',
       'change_password': 'Change Password',
       'account': 'Account',
       'edit_profile': 'Edit Profile',
@@ -643,6 +654,11 @@ class AppLocalizations {
       'biometric_lockout':
           'Biometrik terkunci sementara karena terlalu banyak kegagalan.',
       'biometric_auth_failed': 'Otentikasi gagal.',
+      'enable_biometric_title': 'Aktifkan Login Biometrik?',
+      'enable_biometric_message':
+          'Masuk lebih cepat menggunakan sidik jari atau wajah.',
+      'enable': 'Aktifkan',
+      'later': 'Nanti Saja',
       'change_password': 'Ubah Kata Sandi',
       'account': 'Akun',
       'edit_profile': 'Edit Profil',
@@ -652,7 +668,7 @@ class AppLocalizations {
       'email_update_success':
           'Email verifikasi dikirim. Silakan verifikasi untuk menyelesaikan.',
       'edit_profile_desc': 'Informasi tentang akun Anda',
-      'account_personalization': 'Personalisasi Akun',
+      'account_personalization': 'Informasi Akun',
       'employee_id_label': 'ID Karyawan',
       'generating_id': 'Membuat ID...',
       'account_data': 'Data Akun',

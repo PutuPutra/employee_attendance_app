@@ -232,7 +232,12 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
         children: [
           Icon(icon, color: Colors.grey, size: 20),
           const SizedBox(width: 16),
-          Text(text, style: const TextStyle(fontSize: 16, color: Colors.grey)),
+          Expanded(
+            child: Text(
+              text,
+              style: const TextStyle(fontSize: 16, color: Colors.grey),
+            ),
+          ),
         ],
       ),
     );
@@ -250,6 +255,7 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
     return TextFormField(
       controller: controller,
       keyboardType: keyboardType,
+      maxLines: null,
       readOnly: readOnly,
       enabled: enabled,
       validator: validator,

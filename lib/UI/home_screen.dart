@@ -31,6 +31,9 @@ class _HomeScreenState extends State<HomeScreen> {
   StreamSubscription<QuerySnapshot>? _faceRegisterSubscription;
   StreamSubscription<QuerySnapshot>? _todayAttendanceSubscription;
   bool _hasCheckedInToday = false;
+  String? _breakInTime;
+  String? _breakOutTime;
+  String? _checkOutTime;
 
   @override
   void initState() {
@@ -60,11 +63,12 @@ class _HomeScreenState extends State<HomeScreen> {
               final newEmployeeId =
                   data?[StorageKeys.employeeId]?.toString() ?? '';
               final newRegion = data?['region']?.toString() ?? '';
-              
+
               // Ambil location_name dari collection locations berdasarkan location_id
+              final companyId = data?['company_id']?.toString();
               String newLocationName = '';
               final locationId = data?['location_id'];
-              
+
               if (locationId != null && locationId.toString().isNotEmpty) {
                 try {
                   final locDoc = await FirebaseFirestore.instance
@@ -72,15 +76,21 @@ class _HomeScreenState extends State<HomeScreen> {
                       .doc(locationId.toString())
                       .get();
                   if (locDoc.exists) {
-                    newLocationName = locDoc.data()?['location_name']?.toString() ?? '';
+                    newLocationName =
+                        locDoc.data()?['location_name']?.toString() ?? '';
                   }
                 } catch (e) {
                   debugPrint("Error fetching location name: $e");
                 }
               }
 
+              // Fetch settings (Jam Istirahat & Pulang)
+              _fetchSettings(companyId, locationId?.toString());
+
               // Jika employeeId atau region berubah, update state
-              if (_employeeId != newEmployeeId || _region != newRegion || _locationName != newLocationName) {
+              if (_employeeId != newEmployeeId ||
+                  _region != newRegion ||
+                  _locationName != newLocationName) {
                 final bool idChanged = _employeeId != newEmployeeId;
                 if (mounted) {
                   setState(() {
@@ -99,6 +109,55 @@ class _HomeScreenState extends State<HomeScreen> {
               debugPrint("Error listening to user data: $e");
             },
           );
+    }
+  }
+
+  Future<void> _fetchSettings(String? companyId, String? locationId) async {
+    try {
+      Map<String, dynamic> settings = {};
+
+      // 1. Fetch Company Settings
+      if (companyId != null && companyId.isNotEmpty) {
+        final companyDoc = await FirebaseFirestore.instance
+            .collection('companies')
+            .doc(companyId)
+            .get();
+        if (companyDoc.exists) {
+          final data = companyDoc.data();
+          if (data != null && data['settings'] != null) {
+            settings.addAll(Map<String, dynamic>.from(data['settings']));
+          }
+        }
+      }
+
+      // 2. Fetch Location Settings (Override)
+      if (locationId != null && locationId.isNotEmpty) {
+        final locationDoc = await FirebaseFirestore.instance
+            .collection('locations')
+            .doc(locationId)
+            .get();
+        if (locationDoc.exists) {
+          final data = locationDoc.data();
+          if (data != null && data['settings'] != null) {
+            final locSettings = data['settings'] as Map<String, dynamic>;
+            locSettings.forEach((key, value) {
+              if (value != null && value.toString().isNotEmpty) {
+                settings[key] = value;
+              }
+            });
+          }
+        }
+      }
+
+      if (mounted) {
+        setState(() {
+          _breakInTime = settings['break_in_time']?.toString();
+          _breakOutTime = settings['break_out_time']?.toString();
+          _checkOutTime = settings['check_out_time']?.toString();
+        });
+      }
+    } catch (e) {
+      debugPrint("Error fetching settings: $e");
     }
   }
 
@@ -179,20 +238,25 @@ class _HomeScreenState extends State<HomeScreen> {
   void _handleAttendanceAction(String type) {
     final now = DateTime.now();
     final l10n = AppLocalizations.of(context);
-    int targetHour = 0;
+
+    String? targetTimeStr;
     String actionLabel = '';
+    int defaultHour = 0;
 
     switch (type) {
       case 'breakStart':
-        targetHour = 12; // 12:00 PM
+        targetTimeStr = _breakInTime;
+        defaultHour = 12; // Default 12:00 PM
         actionLabel = l10n.break_;
         break;
       case 'breakEnd':
-        targetHour = 13; // 01:00 PM
+        targetTimeStr = _breakOutTime;
+        defaultHour = 13; // Default 01:00 PM
         actionLabel = l10n.return_;
         break;
       case 'checkOut':
-        targetHour = 17; // 05:00 PM
+        targetTimeStr = _checkOutTime;
+        // defaultHour = 17; // Default 05:00 PM
         actionLabel = l10n.checkOut;
         break;
       default:
@@ -200,8 +264,29 @@ class _HomeScreenState extends State<HomeScreen> {
         return;
     }
 
-    // Jika waktu sekarang kurang dari target jam, tampilkan peringatan
-    if (now.hour < targetHour) {
+    int targetHour = defaultHour;
+    int targetMinute = 0;
+
+    if (targetTimeStr != null && targetTimeStr.contains(':')) {
+      try {
+        final parts = targetTimeStr.split(':');
+        targetHour = int.parse(parts[0]);
+        targetMinute = int.parse(parts[1]);
+      } catch (e) {
+        debugPrint("Error parsing time for $type: $e");
+      }
+    }
+
+    final targetDateTime = DateTime(
+      now.year,
+      now.month,
+      now.day,
+      targetHour,
+      targetMinute,
+    );
+
+    // Jika waktu sekarang kurang dari target waktu, tampilkan peringatan
+    if (now.isBefore(targetDateTime)) {
       showCupertinoDialog(
         context: context,
         builder: (ctx) => CupertinoAlertDialog(
