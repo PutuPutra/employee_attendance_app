@@ -92,7 +92,11 @@ class AttendanceBloc extends Bloc<AttendanceEvent, AttendanceState> {
       try {
         final fileName =
             '${event.employeeId}_attendance_${DateFormat('yyyyMMdd_HHmmss').format(now)}.jpg';
-        imageUrl = await _uploadToImageKit(File(event.imagePath), fileName);
+        if (_imageKitPrivateKey.isEmpty) {
+          print("Warning: IMAGEKIT_PRIVATE_KEY tidak ditemukan di .env");
+        } else {
+          imageUrl = await _uploadToImageKit(File(event.imagePath), fileName);
+        }
       } catch (e) {
         print("Warning: Gagal upload attendance ke ImageKit: $e");
       }

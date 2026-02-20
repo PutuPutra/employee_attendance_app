@@ -8,6 +8,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:gunas_employee_attendance/blocs/attendance/attendance_bloc.dart';
 import 'package:gunas_employee_attendance/blocs/face_recognition/face_recognition_bloc.dart';
 import 'package:gunas_employee_attendance/blocs/location/location_bloc.dart';
+import 'package:gunas_employee_attendance/core/constants/storage_keys.dart';
 import 'package:gunas_employee_attendance/services/camera_service.dart';
 import 'package:intl/intl.dart';
 import 'package:gunas_employee_attendance/auth/auth_service.dart';
@@ -126,7 +127,7 @@ class _FaceScanViewState extends State<FaceScanView> {
     if (mounted) {
       setState(() {
         final data = doc.data();
-        _id = data?['employeeId']?.toString() ?? '';
+        _id = data?[StorageKeys.employeeId]?.toString() ?? '';
         _region = data?['region']?.toString() ?? '';
         _isLoadingId = false;
       });
@@ -219,6 +220,19 @@ class _FaceScanViewState extends State<FaceScanView> {
     }
 
     try {
+      // FIX: Hentikan stream sebelum ambil foto untuk mencegah konflik resource kamera (Error Code 3)
+      // Terutama pada device Xiaomi/Samsung yang strict soal resource kamera
+      if (_cameraService.controller != null &&
+          _cameraService.controller!.value.isStreamingImages) {
+        try {
+          await _cameraService.controller!.stopImageStream();
+          // Tambah delay menjadi 500ms untuk memastikan resource kamera benar-benar lepas
+          await Future.delayed(const Duration(milliseconds: 500));
+        } catch (e) {
+          debugPrint("Warning: Gagal menghentikan stream kamera: $e");
+        }
+      }
+
       final XFile? image = await _cameraService.takePicture();
       if (image == null) {
         if (mounted) setState(() => _isSubmittingAuto = false);

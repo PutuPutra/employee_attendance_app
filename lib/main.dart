@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'firebase_options.dart';
 import 'UI/login_screen.dart';
 import 'blocs/settings/settings_bloc.dart';
@@ -14,6 +15,9 @@ import 'l10n/app_localizations.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Load environment variables (.env)
+  await dotenv.load(fileName: ".env");
 
   // Lock orientation to portrait
   await SystemChrome.setPreferredOrientations([

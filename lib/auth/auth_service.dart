@@ -48,4 +48,30 @@ class AuthService {
     await currentUser!.reauthenticateWithCredential(credential);
     await currentUser!.updatePassword(newPassword);
   }
+
+  Future<void> updateEmail({
+    required String currentPassword,
+    required String newEmail,
+  }) async {
+    try {
+      // Re-authenticate the user
+      AuthCredential credential = EmailAuthProvider.credential(
+        email: currentUser!.email!,
+        password: currentPassword,
+      );
+      await currentUser!.reauthenticateWithCredential(credential);
+
+      // Perform the email update
+      await currentUser!.verifyBeforeUpdateEmail(newEmail);
+    } on FirebaseAuthException catch (e) {
+      // Handle specific errors, e.g., wrong password or email in use
+      debugPrint(
+        "FirebaseAuthException during email update: ${e.code} - ${e.message}",
+      );
+      rethrow;
+    } catch (e) {
+      debugPrint("Error updating email: $e");
+      rethrow;
+    }
+  }
 }

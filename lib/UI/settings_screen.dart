@@ -14,6 +14,7 @@ import '../core/enums/font_option.dart';
 import '../l10n/app_localizations.dart';
 import './saved_face_screen.dart';
 import './account_settings_screen.dart'; // <-- DIIMPOR
+import './update_email_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -301,7 +302,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 _sectionCard([
                   _iosTile(
                     icon: CupertinoIcons.person_circle,
-                    title: l10n.editProfile,
+                    title: l10n.profile,
                     subtitle: l10n.editProfileDesc,
                     onTap: () {
                       Navigator.push(
@@ -366,6 +367,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                     _divider(),
                   ],
+                  _iosTile(
+                    icon: CupertinoIcons.mail,
+                    title: l10n.updateEmail,
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const UpdateEmailScreen(),
+                        ),
+                      );
+                    },
+                  ),
+                  _divider(),
                   _iosTile(
                     icon: CupertinoIcons.lock,
                     title: l10n.changePassword,

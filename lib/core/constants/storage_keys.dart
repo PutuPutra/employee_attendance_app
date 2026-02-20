@@ -27,4 +27,8 @@ class StorageKeys {
 
   /// Key untuk menyimpan password terakhir (untuk login biometrik)
   static const String savedPassword = 'saved_password';
+
+  /// Key untuk menyimpan ID Karyawan
+  /// Field di Firebase users collection: id_karyawan
+  static const String employeeId = 'id_karyawan';
 }

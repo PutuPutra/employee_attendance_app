@@ -173,6 +173,13 @@ class AppLocalizations {
   String get account => _localizedValues[locale.languageCode]!['account']!;
   String get editProfile =>
       _localizedValues[locale.languageCode]!['edit_profile']!;
+  String get profile => _localizedValues[locale.languageCode]!['profile']!;
+  String get updateEmail =>
+      _localizedValues[locale.languageCode]!['update_email']!;
+  String get enterNewEmail =>
+      _localizedValues[locale.languageCode]!['enter_new_email']!;
+  String get emailUpdateSuccess =>
+      _localizedValues[locale.languageCode]!['email_update_success']!;
   String get editProfileDesc =>
       _localizedValues[locale.languageCode]!['edit_profile_desc']!;
 
@@ -210,6 +217,16 @@ class AppLocalizations {
       _localizedValues[locale.languageCode]!['failed_to_save']!;
   String get invalidEmail =>
       _localizedValues[locale.languageCode]!['invalid_email']!;
+  String get currentPassword =>
+      _localizedValues[locale.languageCode]!['current_password']!;
+  String get currentPasswordRequired =>
+      _localizedValues[locale.languageCode]!['current_password_required']!;
+  String get requiresRecentLogin =>
+      _localizedValues[locale.languageCode]!['requires_recent_login']!;
+  String get emailAlreadyInUse =>
+      _localizedValues[locale.languageCode]!['email_already_in_use']!;
+  String get invalidCredentials =>
+      _localizedValues[locale.languageCode]!['invalid_credentials']!;
 
   // Theme options
   String get themeSystem =>
@@ -424,7 +441,12 @@ class AppLocalizations {
       'change_password': 'Change Password',
       'account': 'Account',
       'edit_profile': 'Edit Profile',
-      'edit_profile_desc': 'Change your username and email',
+      'profile': 'Profile',
+      'update_email': 'Update Email',
+      'enter_new_email': 'Enter new email address',
+      'email_update_success':
+          'Verification email sent. Please verify to complete update.',
+      'edit_profile_desc': 'Information about your account',
       'account_personalization': 'Account Personalization',
       'employee_id_label': 'Employee ID',
       'generating_id': 'Generating ID...',
@@ -442,6 +464,14 @@ class AppLocalizations {
       'changes_saved': 'Changes saved successfully!',
       'failed_to_save': 'Failed to save changes',
       'invalid_email': 'Please enter a valid email address',
+      'current_password': 'Current Password',
+      'current_password_required':
+          'Current password is required to change email',
+      'requires_recent_login':
+          'For security, please log out and log in again to change email.',
+      'email_already_in_use':
+          'This email is already associated with another account.',
+      'invalid_credentials': 'Invalid credentials provided.',
 
       // Theme options
       'theme_system': 'System',
@@ -616,7 +646,12 @@ class AppLocalizations {
       'change_password': 'Ubah Kata Sandi',
       'account': 'Akun',
       'edit_profile': 'Edit Profil',
-      'edit_profile_desc': 'Ubah username dan email Anda',
+      'profile': 'Profil',
+      'update_email': 'Ubah Email',
+      'enter_new_email': 'Masukkan alamat email baru',
+      'email_update_success':
+          'Email verifikasi dikirim. Silakan verifikasi untuk menyelesaikan.',
+      'edit_profile_desc': 'Informasi tentang akun Anda',
       'account_personalization': 'Personalisasi Akun',
       'employee_id_label': 'ID Karyawan',
       'generating_id': 'Membuat ID...',
@@ -626,7 +661,7 @@ class AppLocalizations {
       'email_address': 'Alamat Email',
       'region_label': 'Region / Wilayah',
       'region_required': 'Region tidak boleh kosong',
-      'location_label': 'Lokasi / PT',
+      'location_label': 'Lokasi',
       'location_required': 'Lokasi tidak boleh kosong',
       'save_changes': 'Simpan Perubahan',
       'user_not_found_login_again':
@@ -635,6 +670,13 @@ class AppLocalizations {
       'changes_saved': 'Perubahan berhasil disimpan!',
       'failed_to_save': 'Gagal menyimpan perubahan',
       'invalid_email': 'Masukkan alamat email yang valid',
+      'current_password': 'Kata Sandi Saat Ini',
+      'current_password_required':
+          'Kata sandi saat ini diperlukan untuk mengubah email',
+      'requires_recent_login':
+          'Demi keamanan, silakan keluar dan masuk lagi untuk mengubah email.',
+      'email_already_in_use': 'Email ini sudah digunakan oleh akun lain.',
+      'invalid_credentials': 'Kredensial yang diberikan tidak valid.',
 
       // Theme options
       'theme_system': 'Sistem',

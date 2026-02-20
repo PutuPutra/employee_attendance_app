@@ -41,49 +41,49 @@ class DefaultFirebaseOptions {
   }
 
   static const FirebaseOptions web = FirebaseOptions(
-    apiKey: 'AIzaSyAJv3B62mXzo_HEUyskt_dixJKow3rGbLA',
-    appId: '1:801750761432:web:bfc065c1be9a7f50487cad',
-    messagingSenderId: '801750761432',
-    projectId: 'gunas-employee-attendance',
-    authDomain: 'gunas-employee-attendance.firebaseapp.com',
-    storageBucket: 'gunas-employee-attendance.firebasestorage.app',
-    measurementId: 'G-Z5SR7CH18B',
+    apiKey: 'AIzaSyCUkIi2vfJDaZbd9s0XyyXPDfWDIUWxqLg',
+    appId: '1:1054469745762:web:1865804ad450fd0883b53b',
+    messagingSenderId: '1054469745762',
+    projectId: 'gunas-attendance',
+    authDomain: 'gunas-attendance.firebaseapp.com',
+    storageBucket: 'gunas-attendance.firebasestorage.app',
+    measurementId: 'G-07SGS7SHDL',
   );
 
   static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'AIzaSyDk0JyB4LscetQDRbtqttnBV7FohlVg3gs',
-    appId: '1:801750761432:android:98026c8b5d3cf5e1487cad',
-    messagingSenderId: '801750761432',
-    projectId: 'gunas-employee-attendance',
-    storageBucket: 'gunas-employee-attendance.firebasestorage.app',
+    apiKey: 'AIzaSyBwd33cO1aA0vicTIK50G-UfEz8f1cLHqw',
+    appId: '1:1054469745762:android:94d134ab00c7b77183b53b',
+    messagingSenderId: '1054469745762',
+    projectId: 'gunas-attendance',
+    storageBucket: 'gunas-attendance.firebasestorage.app',
   );
 
   static const FirebaseOptions ios = FirebaseOptions(
-    apiKey: 'AIzaSyAO5S7AfXCfQ_53qbxZoMc-fiVxIX0aKcs',
-    appId: '1:801750761432:ios:8dd5bfe2a9338276487cad',
-    messagingSenderId: '801750761432',
-    projectId: 'gunas-employee-attendance',
-    storageBucket: 'gunas-employee-attendance.firebasestorage.app',
+    apiKey: 'AIzaSyAcoN1vuegb8DLlNoKfYJTVz97zy6i_-cw',
+    appId: '1:1054469745762:ios:ba24db030cdf626383b53b',
+    messagingSenderId: '1054469745762',
+    projectId: 'gunas-attendance',
+    storageBucket: 'gunas-attendance.firebasestorage.app',
     iosBundleId: 'com.example.gunasEmployeeAttendance',
   );
 
   static const FirebaseOptions macos = FirebaseOptions(
-    apiKey: 'AIzaSyAO5S7AfXCfQ_53qbxZoMc-fiVxIX0aKcs',
-    appId: '1:801750761432:ios:8dd5bfe2a9338276487cad',
-    messagingSenderId: '801750761432',
-    projectId: 'gunas-employee-attendance',
-    storageBucket: 'gunas-employee-attendance.firebasestorage.app',
+    apiKey: 'AIzaSyAcoN1vuegb8DLlNoKfYJTVz97zy6i_-cw',
+    appId: '1:1054469745762:ios:ba24db030cdf626383b53b',
+    messagingSenderId: '1054469745762',
+    projectId: 'gunas-attendance',
+    storageBucket: 'gunas-attendance.firebasestorage.app',
     iosBundleId: 'com.example.gunasEmployeeAttendance',
   );
 
   static const FirebaseOptions windows = FirebaseOptions(
-    apiKey: 'AIzaSyAJv3B62mXzo_HEUyskt_dixJKow3rGbLA',
-    appId: '1:801750761432:web:4dfa4ce542deaf7b487cad',
-    messagingSenderId: '801750761432',
-    projectId: 'gunas-employee-attendance',
-    authDomain: 'gunas-employee-attendance.firebaseapp.com',
-    storageBucket: 'gunas-employee-attendance.firebasestorage.app',
-    measurementId: 'G-PXKVGN37FE',
+    apiKey: 'AIzaSyCUkIi2vfJDaZbd9s0XyyXPDfWDIUWxqLg',
+    appId: '1:1054469745762:web:1fb2a391b390057183b53b',
+    messagingSenderId: '1054469745762',
+    projectId: 'gunas-attendance',
+    authDomain: 'gunas-attendance.firebaseapp.com',
+    storageBucket: 'gunas-attendance.firebasestorage.app',
+    measurementId: 'G-8SJXBZRRK1',
   );
 
 }

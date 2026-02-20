@@ -11,6 +11,7 @@ import 'settings_screen.dart';
 import 'account_settings_screen.dart';
 import '../auth/auth_service.dart';
 import '../l10n/app_localizations.dart';
+import '../core/constants/storage_keys.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -24,6 +25,7 @@ class _HomeScreenState extends State<HomeScreen> {
   DateTime? endDate;
   String? _employeeId;
   String? _region;
+  String? _locationName;
   bool _isFaceRegistered = false;
   StreamSubscription<DocumentSnapshot>? _userSubscription;
   StreamSubscription<QuerySnapshot>? _faceRegisterSubscription;
@@ -53,18 +55,38 @@ class _HomeScreenState extends State<HomeScreen> {
           .doc(user.uid)
           .snapshots()
           .listen(
-            (snapshot) {
+            (snapshot) async {
               final data = snapshot.data() as Map<String, dynamic>?;
-              final newEmployeeId = data?['employeeId']?.toString() ?? '';
+              final newEmployeeId =
+                  data?[StorageKeys.employeeId]?.toString() ?? '';
               final newRegion = data?['region']?.toString() ?? '';
+              
+              // Ambil location_name dari collection locations berdasarkan location_id
+              String newLocationName = '';
+              final locationId = data?['location_id'];
+              
+              if (locationId != null && locationId.toString().isNotEmpty) {
+                try {
+                  final locDoc = await FirebaseFirestore.instance
+                      .collection('locations')
+                      .doc(locationId.toString())
+                      .get();
+                  if (locDoc.exists) {
+                    newLocationName = locDoc.data()?['location_name']?.toString() ?? '';
+                  }
+                } catch (e) {
+                  debugPrint("Error fetching location name: $e");
+                }
+              }
 
               // Jika employeeId atau region berubah, update state
-              if (_employeeId != newEmployeeId || _region != newRegion) {
+              if (_employeeId != newEmployeeId || _region != newRegion || _locationName != newLocationName) {
                 final bool idChanged = _employeeId != newEmployeeId;
                 if (mounted) {
                   setState(() {
                     _employeeId = newEmployeeId;
                     _region = newRegion;
+                    _locationName = newLocationName;
                   });
                 }
                 if (idChanged) {
@@ -88,7 +110,7 @@ class _HomeScreenState extends State<HomeScreen> {
       // 2. Listen ke face_register berdasarkan employeeId
       _faceRegisterSubscription = FirebaseFirestore.instance
           .collection('face_register')
-          .where('employeeId', isEqualTo: employeeId)
+          .where(StorageKeys.employeeId, isEqualTo: employeeId)
           .limit(1)
           .snapshots()
           .listen(
@@ -274,7 +296,8 @@ class _HomeScreenState extends State<HomeScreen> {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      _ProfileHeader(),
+                      Expanded(child: _ProfileHeader()),
+                      const SizedBox(width: 8),
                       Row(
                         children: [
                           _TopIcon(
@@ -341,7 +364,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                               ),
                                             ),
                                     ),
-                                    if (_region != 'Head Office') ...[
+                                    if (_locationName != 'Head Office') ...[
                                       _IOSActionCard(
                                         title: l10n.break_,
                                         icon: CupertinoIcons.clock,
@@ -602,7 +625,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                         final data = historyList[index];
                                         return _IOSHistoryCard(
                                           data: data,
-                                          region: _region,
+                                          locationName: _locationName,
                                         );
                                       },
                                     );
@@ -818,52 +841,58 @@ class _ProfileHeader extends StatelessWidget {
     final user = authService.value.currentUser;
     final l10n = AppLocalizations.of(context);
 
-    return Row(
-      children: [
-        const CircleAvatar(
-          radius: 22,
-          backgroundColor: Colors.white24,
-          child: Icon(CupertinoIcons.person_fill, color: Colors.white),
-        ),
-        const SizedBox(width: 10),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+    if (user == null) return const SizedBox.shrink();
+
+    return StreamBuilder<DocumentSnapshot>(
+      stream: FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .snapshots(),
+      builder: (context, snapshot) {
+        final data = snapshot.data?.data() as Map<String, dynamic>?;
+        // Ambil username dari Firestore, jika null gunakan Auth displayName
+        final username = data?['username'] ?? user.displayName ?? 'User Name';
+
+        String employeeId;
+        if (snapshot.connectionState == ConnectionState.waiting &&
+            !snapshot.hasData) {
+          employeeId = '${l10n.idLabel}: ...';
+        } else {
+          employeeId = data?[StorageKeys.employeeId] ?? l10n.notAvailable;
+        }
+
+        return Row(
           children: [
-            Text(
-              user?.displayName ?? 'User Name',
-              style: const TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.w600,
+            const CircleAvatar(
+              radius: 22,
+              backgroundColor: Colors.white24,
+              child: Icon(CupertinoIcons.person_fill, color: Colors.white),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    username,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w600,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  Text(
+                    employeeId,
+                    style: const TextStyle(fontSize: 12, color: Colors.white70),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
               ),
             ),
-            if (user != null)
-              StreamBuilder<DocumentSnapshot>(
-                stream: FirebaseFirestore.instance
-                    .collection('users')
-                    .doc(user.uid)
-                    .snapshots(),
-                builder: (context, snapshot) {
-                  if (snapshot.connectionState == ConnectionState.waiting &&
-                      !snapshot.hasData) {
-                    return Text(
-                      '${l10n.idLabel}: ...',
-                      style: const TextStyle(
-                        fontSize: 12,
-                        color: Colors.white70,
-                      ),
-                    );
-                  }
-                  final data = snapshot.data?.data() as Map<String, dynamic>?;
-                  final employeeId = data?['employeeId'] ?? l10n.notAvailable;
-                  return Text(
-                    '${l10n.idLabel}: $employeeId',
-                    style: const TextStyle(fontSize: 12, color: Colors.white70),
-                  );
-                },
-              ),
           ],
-        ),
-      ],
+        );
+      },
     );
   }
 }
@@ -947,9 +976,9 @@ class _IOSActionCard extends StatelessWidget {
 /// ================= HISTORY CARD =================
 class _IOSHistoryCard extends StatelessWidget {
   final Map<String, dynamic> data;
-  final String? region;
+  final String? locationName;
 
-  const _IOSHistoryCard({super.key, required this.data, this.region});
+  const _IOSHistoryCard({super.key, required this.data, this.locationName});
 
   String _formatTime(dynamic timestamp) {
     if (timestamp == null) return '--:--';
@@ -1015,7 +1044,7 @@ class _IOSHistoryCard extends StatelessWidget {
                   time: _formatTime(checkIn),
                   isLate: isLate,
                 ),
-                if (region != 'Head Office') ...[
+                if (locationName != 'Head Office') ...[
                   _Time(label: l10n.breakTime, time: _formatTime(breakStart)),
                   _Time(label: l10n.returnTime, time: _formatTime(breakEnd)),
                 ],

@@ -6,6 +6,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import '../core/constants/storage_keys.dart';
 
 class FaceDataService {
   final _auth = FirebaseAuth.instance;
@@ -40,7 +41,7 @@ class FaceDataService {
       final userDoc = await _firestore.collection('users').doc(user.uid).get();
       if (userDoc.exists) {
         final data = userDoc.data() as Map<String, dynamic>;
-        employeeId = data['employeeId'];
+        employeeId = data[StorageKeys.employeeId];
         name = data['username'] ?? user.displayName;
       }
 
@@ -51,15 +52,20 @@ class FaceDataService {
       // 3. Upload to ImageKit (Backup Cloud)
       String? faceImageUrl;
       try {
-        faceImageUrl = await _uploadToImageKit(File(imagePath), fileName);
+        // Pengecekan diletakkan DI DALAM try-catch agar aman jika dotenv belum init
+        if (_imageKitPrivateKey.isEmpty) {
+          print("Warning: IMAGEKIT_PRIVATE_KEY tidak ditemukan di .env");
+        } else {
+          faceImageUrl = await _uploadToImageKit(File(imagePath), fileName);
+        }
       } catch (e) {
-        // Jika upload gagal, kita log errornya tapi tetap lanjut simpan data lokal
+        // Jika upload gagal (atau dotenv error), log error tapi tetap lanjut simpan data lokal
         print("Warning: Gagal upload ke ImageKit: $e");
       }
 
       // 4. Save to face_register collection
       await _firestore.collection('face_register').doc(user.uid).set({
-        'employeeId': employeeId,
+        StorageKeys.employeeId: employeeId,
         'name': name ?? 'Unknown',
         'faceImagePath': fileName,
         'faceImageUrl': faceImageUrl, // Simpan URL ImageKit

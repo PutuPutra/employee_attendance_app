@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import '../l10n/app_localizations.dart';
+import '../core/constants/storage_keys.dart';
 
 class AccountSettingsScreen extends StatefulWidget {
   const AccountSettingsScreen({super.key});
@@ -16,57 +17,14 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
   final _formKey = GlobalKey<FormState>();
   final _usernameController = TextEditingController();
   final _emailController = TextEditingController();
+  final _locationController = TextEditingController();
+  final _companyController = TextEditingController();
 
   final _auth = FirebaseAuth.instance;
   final _firestore = FirebaseFirestore.instance;
 
   String? _employeeId;
   bool _isLoading = true;
-  bool _isSaving = false;
-  String? _selectedRegion;
-  String? _selectedLokasi;
-
-  final List<String> _regionOptions = [
-    'Cilegon',
-    'Head Office',
-    'Sanggau',
-    'Sintang',
-    'Palangkaraya',
-  ];
-
-  final List<String> _lokasiOptions = [
-    'PT. ASL TIMUR',
-    'PT. ACP',
-    'PT. MSP TIMUR',
-    'PT. MSP BARAT',
-    'PT. APN',
-    'PT. Arvena Sepakat',
-    'PT. MJP 1',
-    'PT. SJAL TAYAN',
-    'PT. SJAL TAYAN POM',
-    'PT. SJAL TOBA POM',
-    'PT. SJAL MELIAU',
-    'PT. SJAL BARAT',
-    'PT. SJAL TIMUR',
-    'PT. MJP 2',
-    'PT. MJP 3',
-    'PT. MJP POM',
-    'PT. SURYA DELI 1',
-    'PT. SURYA DELI 2',
-    'PT. SML BARAT',
-    'PT. SML TIMUR',
-    'PT. SML POM',
-    'PT. ASL BARAT',
-    'PT. ASL POM',
-    'PT. BSL',
-    'PT. BTN',
-    'PT. BTN POM',
-    'PT. MAL',
-    'PT. MSP SINTANG',
-    'PT. SML SINTANG',
-    'PT. SML TIMUR UNIT APD',
-    'PT. SJAL TAYAN PROJECT',
-  ];
 
   @override
   void initState() {
@@ -93,8 +51,8 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
       String email =
           user.email ?? ''; // Directly get email from the logged-in user
       String? employeeId;
-      String region = '';
-      String lokasi = '';
+      String locationName = '';
+      String companyName = '';
 
       // Then, try to load more specific data from Firestore.
       DocumentSnapshot userDoc = await _firestore
@@ -109,21 +67,52 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
             data['username'] ??
             user.displayName ??
             ''; // Use Firestore username if available
+        // email = data['email'] ?? email; // Gunakan email dari Auth saja sebagai source of truth
         email = data['email'] ?? email; // Use Firestore email if available
-        employeeId = data['employeeId'];
-        region = data['region'] ?? '';
-        lokasi = data['lokasi'] ?? '';
+        employeeId = data[StorageKeys.employeeId];
+
+        final locationId = data['location_id'];
+        if (locationId != null && locationId.toString().isNotEmpty) {
+          final locDoc = await _firestore
+              .collection('locations')
+              .doc(locationId.toString())
+              .get();
+          if (locDoc.exists) {
+            final locData = locDoc.data() as Map<String, dynamic>?;
+            locationName =
+                locData?['location_name']?.toString() ??
+                'Location name not available';
+          } else {
+            locationName = 'Location document not found';
+          }
+        } else {
+          locationName = 'No location ID available';
+        }
+
+        final companyId = data['company_id'];
+        if (companyId != null && companyId.toString().isNotEmpty) {
+          final compDoc = await _firestore
+              .collection('companies')
+              .doc(companyId.toString())
+              .get();
+          if (compDoc.exists) {
+            final compData = compDoc.data() as Map<String, dynamic>?;
+            companyName =
+                compData?['company_name']?.toString() ??
+                'Company name not available';
+          } else {
+            companyName = 'Company document not found';
+          }
+        } else {
+          companyName = 'No company ID available';
+        }
       }
 
       // Set the controller values.
       _usernameController.text = username;
       _emailController.text = email;
-      if (_regionOptions.contains(region)) {
-        _selectedRegion = region;
-      }
-      if (_lokasiOptions.contains(lokasi)) {
-        _selectedLokasi = lokasi;
-      }
+      _locationController.text = locationName;
+      _companyController.text = companyName;
 
       // Finally, generate an Employee ID if it doesn't exist yet.
       if (employeeId == null || employeeId.isEmpty) {
@@ -146,68 +135,12 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
     }
   }
 
-  Future<void> _saveChanges() async {
-    final l10n = AppLocalizations.of(context);
-    if (!_formKey.currentState!.validate() || _isSaving) {
-      return;
-    }
-
-    setState(() => _isSaving = true);
-
-    final user = _auth.currentUser;
-    if (user == null) {
-      if (mounted) {
-        setState(() => _isSaving = false);
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(l10n.sessionExpired)));
-      }
-      return;
-    }
-
-    try {
-      final userData = {
-        'username': _usernameController.text,
-        'email': _emailController.text,
-        'employeeId': _employeeId,
-        'region': _selectedRegion,
-        'lokasi': _selectedLokasi,
-      };
-
-      // Save data to Firestore
-      await _firestore
-          .collection('users')
-          .doc(user.uid)
-          .set(userData, SetOptions(merge: true));
-
-      // Update FirebaseAuth display name
-      if (user.displayName != _usernameController.text) {
-        await user.updateDisplayName(_usernameController.text);
-      }
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(l10n.changesSaved),
-            backgroundColor: Colors.green,
-          ),
-        );
-        Navigator.of(context).pop();
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() => _isSaving = false);
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('${l10n.failedToSave}: $e')));
-      }
-    }
-  }
-
   @override
   void dispose() {
     _usernameController.dispose();
     _emailController.dispose();
+    _locationController.dispose();
+    _companyController.dispose();
     super.dispose();
   }
 
@@ -229,7 +162,7 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
                     _buildSectionHeader(l10n.employeeIdLabel),
                     const SizedBox(height: 8),
                     _buildReadOnlyTextField(
-                      _employeeId ?? l10n.generatingId,
+                      _employeeId ?? l10n.notAvailable,
                       CupertinoIcons.number,
                     ),
                     const SizedBox(height: 24),
@@ -241,9 +174,7 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
                       controller: _usernameController,
                       label: l10n.username,
                       icon: CupertinoIcons.person,
-                      validator: (value) => value == null || value.isEmpty
-                          ? l10n.usernameRequired
-                          : null,
+                      enabled: false,
                     ),
                     const SizedBox(height: 16),
 
@@ -251,90 +182,23 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
                       controller: _emailController,
                       label: l10n.emailAddress,
                       icon: CupertinoIcons.at,
-                      keyboardType: TextInputType.emailAddress,
-                      validator: (value) =>
-                          value == null || !value.contains('@')
-                          ? l10n.invalidEmail
-                          : null,
+                      enabled: false,
                     ),
                     const SizedBox(height: 16),
 
-                    DropdownButtonFormField<String>(
-                      initialValue: _selectedRegion,
-                      decoration: InputDecoration(
-                        labelText: l10n.regionLabel,
-                        prefixIcon: const Icon(
-                          CupertinoIcons.location,
-                          size: 20,
-                        ),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        filled: true,
-                      ),
-                      items: _regionOptions.map((String value) {
-                        return DropdownMenuItem<String>(
-                          value: value,
-                          child: Text(value),
-                        );
-                      }).toList(),
-                      onChanged: (newValue) =>
-                          setState(() => _selectedRegion = newValue),
-                      validator: (value) => value == null || value.isEmpty
-                          ? l10n.regionRequired
-                          : null,
+                    _buildTextFormField(
+                      controller: _locationController,
+                      label: l10n.locationLabel,
+                      icon: CupertinoIcons.location,
+                      enabled: false,
                     ),
                     const SizedBox(height: 16),
 
-                    DropdownButtonFormField<String>(
-                      initialValue: _selectedLokasi,
-                      decoration: InputDecoration(
-                        labelText: l10n.locationLabel,
-                        prefixIcon: const Icon(
-                          CupertinoIcons.building_2_fill,
-                          size: 20,
-                        ),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        filled: true,
-                      ),
-                      items: _lokasiOptions.map((String value) {
-                        return DropdownMenuItem<String>(
-                          value: value,
-                          child: Text(value),
-                        );
-                      }).toList(),
-                      onChanged: (newValue) =>
-                          setState(() => _selectedLokasi = newValue),
-                      validator: (value) => value == null || value.isEmpty
-                          ? l10n.locationRequired
-                          : null,
-                    ),
-                    const SizedBox(height: 40),
-
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton(
-                        onPressed: _saveChanges,
-                        style: ElevatedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
-                        child: _isSaving
-                            ? const CupertinoActivityIndicator(
-                                color: Colors.white,
-                              )
-                            : Text(
-                                l10n.saveChanges,
-                                style: const TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                      ),
+                    _buildTextFormField(
+                      controller: _companyController,
+                      label: 'Company',
+                      icon: CupertinoIcons.building_2_fill,
+                      enabled: false,
                     ),
                   ],
                 ),
@@ -358,10 +222,10 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
-        color: Theme.of(context).disabledColor.withValues(alpha: 0.1),
+        color: Theme.of(context).disabledColor.withOpacity(0.1),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: Theme.of(context).disabledColor.withValues(alpha: 0.2),
+          color: Theme.of(context).disabledColor.withOpacity(0.2),
         ),
       ),
       child: Row(
@@ -378,12 +242,16 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
     required TextEditingController controller,
     required String label,
     required IconData icon,
+    bool readOnly = false,
+    bool enabled = true,
     TextInputType keyboardType = TextInputType.text,
     String? Function(String?)? validator,
   }) {
     return TextFormField(
       controller: controller,
       keyboardType: keyboardType,
+      readOnly: readOnly,
+      enabled: enabled,
       validator: validator,
       decoration: InputDecoration(
         labelText: label,

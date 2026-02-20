@@ -6,6 +6,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
 import '../l10n/app_localizations.dart';
+import '../core/constants/storage_keys.dart';
 
 class SavedFaceScreen extends StatefulWidget {
   const SavedFaceScreen({super.key});
@@ -53,7 +54,7 @@ class _SavedFaceScreenState extends State<SavedFaceScreen> {
         final l10n = AppLocalizations.of(context);
         setState(() {
           _employeeName = data['username'] ?? l10n.nameNotAvailable;
-          _employeeId = data['employeeId'] ?? l10n.idNotAvailable;
+          _employeeId = data[StorageKeys.employeeId] ?? l10n.idNotAvailable;
           _isUserDataLoading = false;
         });
       }
