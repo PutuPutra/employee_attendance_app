@@ -214,7 +214,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
       _todayAttendanceSubscription = FirebaseFirestore.instance
           .collection('user_attendance')
-          .where('employeeId', isEqualTo: employeeId)
+          .where('id_karyawan', isEqualTo: employeeId)
           .where('date', isEqualTo: todayStr) // Query for all records of today
           .snapshots()
           .listen(
@@ -342,7 +342,7 @@ class _HomeScreenState extends State<HomeScreen> {
     // Kita akan ambil semua data user ini, lalu sort dan limit di sisi aplikasi (client-side).
     return FirebaseFirestore.instance
         .collection('user_attendance')
-        .where('employeeId', isEqualTo: _employeeId)
+        .where('id_karyawan', isEqualTo: _employeeId)
         .snapshots();
   }
 
