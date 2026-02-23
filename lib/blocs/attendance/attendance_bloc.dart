@@ -170,7 +170,7 @@ class AttendanceBloc extends Bloc<AttendanceEvent, AttendanceState> {
 
       // Selalu simpan data baru (Add Document)
       await _firestore.collection('user_attendance').add({
-        'employeeId': event.employeeId,
+        'id_karyawan': event.employeeId,
         'name': event.name,
         'imagePath': event.imagePath,
         'imageUrl': imageUrl,
@@ -180,6 +180,8 @@ class AttendanceBloc extends Bloc<AttendanceEvent, AttendanceState> {
         'statusCheckIn': statusCheckIn, // 1=Tepat Waktu, 2=Terlambat
         'timestamp': FieldValue.serverTimestamp(),
         'date': dateStr, // Disimpan untuk memudahkan query per hari
+        'is_synced':
+            false, // Flag bantu: Laravel akan query data yang is_synced == false
       });
 
       // Hapus file lokal jika upload berhasil untuk menghemat storage

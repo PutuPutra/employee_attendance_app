@@ -317,21 +317,56 @@ class _FaceScanViewState extends State<FaceScanView> {
       child: Scaffold(
         body: Column(
           children: [
-            if (_isCameraInitialized)
-              SizedBox(
-                height: MediaQuery.of(context).size.height * 0.62,
-                width: double.infinity,
-                child: CameraPreview(_cameraService.controller!),
-              )
-            else
-              Container(
-                height: MediaQuery.of(context).size.height * 0.62,
-                width: double.infinity,
-                color: Colors.black,
-                child: const Center(
-                  child: CupertinoActivityIndicator(color: Colors.white),
+            Stack(
+              children: [
+                if (_isCameraInitialized)
+                  SizedBox(
+                    height: MediaQuery.of(context).size.height * 0.62,
+                    width: double.infinity,
+                    child: CameraPreview(_cameraService.controller!),
+                  )
+                else
+                  Container(
+                    height: MediaQuery.of(context).size.height * 0.62,
+                    width: double.infinity,
+                    color: Colors.black,
+                    child: const Center(
+                      child: CupertinoActivityIndicator(color: Colors.white),
+                    ),
+                  ),
+                BlocBuilder<FaceRecognitionBloc, FaceRecognitionState>(
+                  builder: (context, state) {
+                    if (state is FaceRecognitionLoading) {
+                      return Container(
+                        height: MediaQuery.of(context).size.height * 0.62,
+                        width: double.infinity,
+                        color: Colors.black.withValues(alpha: 0.5),
+                        child: Center(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const CupertinoActivityIndicator(
+                                color: Colors.white,
+                                radius: 16,
+                              ),
+                              const SizedBox(height: 12),
+                              Text(
+                                l10n.loading,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    }
+                    return const SizedBox.shrink();
+                  },
                 ),
-              ),
+              ],
+            ),
             Container(
               height: MediaQuery.of(context).size.height * 0.38,
               width: double.infinity,

@@ -116,7 +116,7 @@ class _HomeScreenState extends State<HomeScreen> {
     try {
       Map<String, dynamic> settings = {};
 
-      // 1. Fetch Company Settings
+      // 1. Fetch Company Settings (Base Layer)
       if (companyId != null && companyId.isNotEmpty) {
         final companyDoc = await FirebaseFirestore.instance
             .collection('companies')
@@ -130,7 +130,8 @@ class _HomeScreenState extends State<HomeScreen> {
         }
       }
 
-      // 2. Fetch Location Settings (Override)
+      // 2. Fetch Location Settings (Override Layer)
+      // Sesuai briefing: Jika settings di location TIDAK NULL, maka pakai (override)
       if (locationId != null && locationId.isNotEmpty) {
         final locationDoc = await FirebaseFirestore.instance
             .collection('locations')
@@ -138,9 +139,11 @@ class _HomeScreenState extends State<HomeScreen> {
             .get();
         if (locationDoc.exists) {
           final data = locationDoc.data();
+          // Cek apakah field 'settings' ada dan tidak null
           if (data != null && data['settings'] != null) {
-            final locSettings = data['settings'] as Map<String, dynamic>;
+            final locSettings = Map<String, dynamic>.from(data['settings']);
             locSettings.forEach((key, value) {
+              // Hanya override jika value valid (tidak null/empty)
               if (value != null && value.toString().isNotEmpty) {
                 settings[key] = value;
               }
@@ -241,22 +244,18 @@ class _HomeScreenState extends State<HomeScreen> {
 
     String? targetTimeStr;
     String actionLabel = '';
-    int defaultHour = 0;
 
     switch (type) {
       case 'breakStart':
         targetTimeStr = _breakInTime;
-        defaultHour = 12; // Default 12:00 PM
         actionLabel = l10n.break_;
         break;
       case 'breakEnd':
         targetTimeStr = _breakOutTime;
-        defaultHour = 13; // Default 01:00 PM
         actionLabel = l10n.return_;
         break;
       case 'checkOut':
         targetTimeStr = _checkOutTime;
-        // defaultHour = 17; // Default 05:00 PM
         actionLabel = l10n.checkOut;
         break;
       default:
@@ -264,17 +263,23 @@ class _HomeScreenState extends State<HomeScreen> {
         return;
     }
 
-    int targetHour = defaultHour;
+    // Jika tidak ada setting jam dari Firebase, langsung lanjut tanpa validasi waktu
+    if (targetTimeStr == null || !targetTimeStr.contains(':')) {
+      _go(FaceScanScreen(attendanceType: type));
+      return;
+    }
+
+    int targetHour = 0;
     int targetMinute = 0;
 
-    if (targetTimeStr != null && targetTimeStr.contains(':')) {
-      try {
-        final parts = targetTimeStr.split(':');
-        targetHour = int.parse(parts[0]);
-        targetMinute = int.parse(parts[1]);
-      } catch (e) {
-        debugPrint("Error parsing time for $type: $e");
-      }
+    try {
+      final parts = targetTimeStr.split(':');
+      targetHour = int.parse(parts[0]);
+      targetMinute = int.parse(parts[1]);
+    } catch (e) {
+      debugPrint("Error parsing time for $type: $e");
+      _go(FaceScanScreen(attendanceType: type));
+      return;
     }
 
     final targetDateTime = DateTime(
