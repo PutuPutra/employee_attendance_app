@@ -20,7 +20,7 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   DateTime? startDate;
   DateTime? endDate;
   String? _employeeId;
@@ -34,19 +34,53 @@ class _HomeScreenState extends State<HomeScreen> {
   String? _breakInTime;
   String? _breakOutTime;
   String? _checkOutTime;
+  DateTime _lastCheckedDate = DateTime.now();
+  Timer? _dateCheckTimer;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _setupListeners();
+    // Cek setiap 1 menit untuk menangani pergantian hari saat aplikasi tetap terbuka (foreground)
+    _dateCheckTimer = Timer.periodic(
+      const Duration(minutes: 1),
+      (_) => _checkDateChange(),
+    );
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _dateCheckTimer?.cancel();
     _userSubscription?.cancel();
     _faceRegisterSubscription?.cancel();
     _todayAttendanceSubscription?.cancel();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _checkDateChange();
+    }
+  }
+
+  void _checkDateChange() {
+    final now = DateTime.now();
+    final isSameDay =
+        now.year == _lastCheckedDate.year &&
+        now.month == _lastCheckedDate.month &&
+        now.day == _lastCheckedDate.day;
+
+    if (!isSameDay) {
+      _lastCheckedDate = now;
+      if (_employeeId != null) {
+        debugPrint("Date changed detected. Refreshing attendance listener.");
+        _updateTodayAttendanceListener(_employeeId!);
+        if (mounted) setState(() {});
+      }
+    }
   }
 
   void _setupListeners() {
