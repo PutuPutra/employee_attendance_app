@@ -46,6 +46,11 @@ class FaceDetectionBloc extends Bloc<FaceDetectionEvent, FaceDetectionState> {
       // 2. Delegate the registration process to FaceDataService
       final localPath = await faceDataService.registerFace(image);
 
+      if (localPath == null) {
+        emit(FaceCaptureFailure('Gagal mendaftarkan wajah.'));
+        return;
+      }
+
       // 3. Emit success state with the local path
       emit(FaceCaptureSuccess(localPath));
     } catch (e) {

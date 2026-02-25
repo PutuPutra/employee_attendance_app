@@ -9,6 +9,7 @@ import 'package:http/http.dart' as http;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import './attendance_calculator.dart';
 import 'package:image/image.dart' as img;
+import 'package:path_provider/path_provider.dart';
 part 'attendance_event.dart';
 part 'attendance_state.dart';
 
@@ -187,7 +188,18 @@ class AttendanceBloc extends Bloc<AttendanceEvent, AttendanceState> {
         if (_imageKitPrivateKey.isEmpty) {
           debugPrint("Warning: IMAGEKIT_PRIVATE_KEY tidak ditemukan di .env");
         } else {
-          imageUrl = await _uploadToImageKit(File(event.imagePath), fileName);
+          // Konversi gambar ke JPG valid & fix orientation sebelum upload
+          // Ini memastikan preview di ImageKit dashboard bisa muncul dengan benar
+          // Ini adalah GAMBAR ASLI (Real Image), bukan embedding.
+          final File processedImage = await _convertToJpg(
+            File(event.imagePath),
+          );
+          imageUrl = await _uploadToImageKit(processedImage, fileName);
+
+          // Hapus file temporary hasil proses agar tidak menumpuk di cache
+          if (await processedImage.exists()) {
+            await processedImage.delete();
+          }
         }
       } catch (e) {
         debugPrint("Warning: Gagal upload attendance ke ImageKit: $e");
@@ -260,7 +272,7 @@ class AttendanceBloc extends Bloc<AttendanceEvent, AttendanceState> {
     );
 
     request.fields['fileName'] = fileName;
-    request.fields['folder'] = '/attendance/';
+    request.fields['folder'] = '/face_attendance/';
     request.fields['useUniqueFileName'] = 'false';
 
     // Basic Auth menggunakan Private Key
@@ -280,7 +292,7 @@ class AttendanceBloc extends Bloc<AttendanceEvent, AttendanceState> {
     }
   }
 
-  Future<File> convertToJpg(File originalFile) async {
+  Future<File> _convertToJpg(File originalFile) async {
     // 1. Baca file gambar asli
     final bytes = await originalFile.readAsBytes();
 
@@ -299,11 +311,11 @@ class AttendanceBloc extends Bloc<AttendanceEvent, AttendanceState> {
     // quality: 85 adalah standar yang bagus (seimbang antara size dan kualitas)
     final jpgBytes = img.encodeJpg(fixedImage, quality: 85);
 
-    // 5. Buat path baru dengan ekstensi .jpg
-    final newPath = originalFile.path.replaceAll(
-      RegExp(r'\.[a-zA-Z0-9]+$'),
-      '.jpg',
-    );
+    // 5. Buat file temporary baru untuk memastikan tidak ada konflik path
+    // dan nama file memiliki ekstensi .jpg yang valid.
+    final tempDir = await getTemporaryDirectory();
+    final timestamp = DateTime.now().millisecondsSinceEpoch;
+    final newPath = '${tempDir.path}/${timestamp}_attendance_processed.jpg';
 
     // 6. Tulis bytes ke file baru
     final newFile = File(newPath);

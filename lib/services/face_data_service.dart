@@ -6,7 +6,10 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:google_mlkit_face_detection/google_mlkit_face_detection.dart';
+import 'package:gunas_employee_attendance/services/ml_service.dart';
 import '../core/constants/storage_keys.dart';
+import 'package:image/image.dart' as img;
 
 class FaceDataService {
   final _auth = FirebaseAuth.instance;
@@ -18,24 +21,39 @@ class FaceDataService {
   final String _imageKitUrlEndpoint =
       'https://upload.imagekit.io/api/v1/files/upload';
 
-  /// Saves the captured face image locally and updates the user's document in Firestore.
-  ///
-  /// Returns the local path of the saved image.
-  Future<String> registerFace(XFile imageFile) async {
+  /// Registers face: Generates embedding, uploads to ImageKit, saves to Firestore.
+  /// Returns the ImageKit URL.
+  Future<String?> registerFace(XFile imageFile) async {
     final user = _auth.currentUser;
     if (user == null) {
       throw Exception('No user logged in. Cannot register face.');
     }
 
-    try {
-      // 1. Save image to local storage with a random unique name
-      final timestamp = DateTime.now().millisecondsSinceEpoch;
-      final fileName = '${user.uid}_face_register_$timestamp.jpg';
-      final directory = await getApplicationDocumentsDirectory();
-      final imagePath = '${directory.path}/$fileName';
-      await imageFile.saveTo(imagePath);
+    final MLService mlService = MLService();
+    final FaceDetector faceDetector = FaceDetector(
+      options: FaceDetectorOptions(performanceMode: FaceDetectorMode.accurate),
+    );
 
-      // 2. Get the user's employeeId and name from Firestore
+    try {
+      // 1. Initialize ML Service
+      await mlService.initialize();
+
+      // 2. Detect Face & Generate Embedding
+      final File file = File(imageFile.path);
+      final inputImage = InputImage.fromFilePath(file.path);
+      final faces = await faceDetector.processImage(inputImage);
+
+      if (faces.isEmpty) {
+        throw Exception('No face detected in the image.');
+      }
+
+      // Generate embedding (List<double>)
+      final List<double> embedding = await mlService.getEmbeddingFromFile(
+        file,
+        faces.first,
+      );
+
+      // 3. Get the user's employeeId and name from Firestore
       String? employeeId;
       String? name;
       final userDoc = await _firestore.collection('users').doc(user.uid).get();
@@ -49,36 +67,44 @@ class FaceDataService {
         throw Exception('Employee ID not found for the current user.');
       }
 
-      // 3. Upload to ImageKit (Backup Cloud)
+      // 4. Upload to ImageKit
+      final timestamp = DateTime.now().millisecondsSinceEpoch;
+      final fileName = '${user.uid}_face_register_$timestamp.jpg';
       String? faceImageUrl;
+
       try {
-        // Pengecekan diletakkan DI DALAM try-catch agar aman jika dotenv belum init
         if (_imageKitPrivateKey.isEmpty) {
           print("Warning: IMAGEKIT_PRIVATE_KEY tidak ditemukan di .env");
         } else {
-          faceImageUrl = await _uploadToImageKit(File(imagePath), fileName);
+          // Konversi ke JPG & perbaiki orientasi sebelum upload agar preview muncul
+          final processedFile = await _convertToJpg(file);
+          faceImageUrl = await _uploadToImageKit(processedFile, fileName);
         }
       } catch (e) {
-        // Jika upload gagal (atau dotenv error), log error tapi tetap lanjut simpan data lokal
         print("Warning: Gagal upload ke ImageKit: $e");
+        // Opsional: Throw error jika ImageKit wajib
+        // throw Exception("Failed to upload image to cloud.");
       }
 
-      // 4. Save to face_register collection
+      // 5. Save Embedding & URL to Firestore
       await _firestore.collection('face_register').doc(user.uid).set({
         StorageKeys.employeeId: employeeId,
         'name': name ?? 'Unknown',
-        'faceImagePath': fileName,
         'faceImageUrl': faceImageUrl, // Simpan URL ImageKit
+        'embedding': embedding, // SIMPAN EMBEDDING DI SINI
         'registeredAt': FieldValue.serverTimestamp(),
       });
 
-      return imagePath; // Return the local path on success
+      return faceImageUrl;
     } on FirebaseException catch (e) {
       // Re-throw with a more specific message
       throw Exception('Firebase error during face registration: ${e.message}');
     } catch (e) {
       // Re-throw any other exceptions
       rethrow;
+    } finally {
+      faceDetector.close();
+      // mlService dispose handled internally or let GC handle it
     }
   }
 
@@ -89,7 +115,7 @@ class FaceDataService {
     );
 
     request.fields['fileName'] = fileName;
-    request.fields['folder'] = '/attendance/'; // Sesuai request folder Anda
+    request.fields['folder'] = '/face_registration/';
     request.fields['useUniqueFileName'] = 'false';
 
     // Basic Auth menggunakan Private Key
@@ -107,5 +133,31 @@ class FaceDataService {
     } else {
       throw Exception('ImageKit Upload Failed: ${response.statusCode}');
     }
+  }
+
+  Future<File> _convertToJpg(File originalFile) async {
+    final bytes = await originalFile.readAsBytes();
+    final image = img.decodeImage(bytes);
+
+    if (image == null) {
+      throw Exception("Gagal membaca gambar untuk konversi");
+    }
+
+    // Fix orientation (EXIF) - Penting agar gambar tidak miring di web/preview
+    final fixedImage = img.bakeOrientation(image);
+
+    // Encode to JPG dengan kualitas 85
+    final jpgBytes = img.encodeJpg(fixedImage, quality: 85);
+
+    // Buat file temporary baru untuk memastikan tidak ada konflik path
+    // dan nama file memiliki ekstensi .jpg yang valid.
+    final tempDir = await getTemporaryDirectory();
+    final newPath =
+        '${tempDir.path}/${DateTime.now().millisecondsSinceEpoch}_processed.jpg';
+
+    final newFile = File(newPath);
+    await newFile.writeAsBytes(jpgBytes);
+
+    return newFile;
   }
 }

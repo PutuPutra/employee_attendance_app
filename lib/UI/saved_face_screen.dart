@@ -1,10 +1,7 @@
-import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/cupertino.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:path_provider/path_provider.dart';
 import '../l10n/app_localizations.dart';
 import '../core/constants/storage_keys.dart';
 
@@ -16,7 +13,7 @@ class SavedFaceScreen extends StatefulWidget {
 }
 
 class _SavedFaceScreenState extends State<SavedFaceScreen> {
-  Future<File?>? _faceImageFuture;
+  Future<String?>? _faceImageUrlFuture;
 
   String? _employeeName;
   String? _employeeId;
@@ -36,7 +33,7 @@ class _SavedFaceScreenState extends State<SavedFaceScreen> {
 
   void _loadImage() {
     setState(() {
-      _faceImageFuture = _getSavedImage();
+      _faceImageUrlFuture = _getSavedImageUrl();
     });
   }
 
@@ -48,12 +45,15 @@ class _SavedFaceScreenState extends State<SavedFaceScreen> {
     }
 
     try {
-      final userDoc = await _firestore.collection('users').doc(user.uid).get();
+      final userDoc = await _firestore
+          .collection('face_register')
+          .doc(user.uid)
+          .get();
       if (userDoc.exists && mounted) {
         final data = userDoc.data() as Map<String, dynamic>;
         final l10n = AppLocalizations.of(context);
         setState(() {
-          _employeeName = data['username'] ?? l10n.nameNotAvailable;
+          _employeeName = data['name'] ?? l10n.nameNotAvailable;
           _employeeId = data[StorageKeys.employeeId] ?? l10n.idNotAvailable;
           _isUserDataLoading = false;
         });
@@ -70,7 +70,7 @@ class _SavedFaceScreenState extends State<SavedFaceScreen> {
     }
   }
 
-  Future<File?> _getSavedImage() async {
+  Future<String?> _getSavedImageUrl() async {
     final user = _auth.currentUser;
     if (user == null) return null;
 
@@ -83,32 +83,7 @@ class _SavedFaceScreenState extends State<SavedFaceScreen> {
 
       final data = doc.data();
       final faceImageUrl = data?['faceImageUrl'] as String?;
-      // Gunakan nama file dari Firestore atau default jika null (Cloud First Strategy)
-      final fileName =
-          data?['faceImagePath'] as String? ?? '${user.uid}_face.jpg';
-
-      final directory = await getApplicationDocumentsDirectory();
-      final path = '${directory.path}/$fileName';
-      final file = File(path);
-
-      if (await file.exists()) {
-        return file;
-      } else if (faceImageUrl != null) {
-        // Restore: Download image from ImageKit if local file is missing
-        try {
-          final request = await HttpClient().getUrl(Uri.parse(faceImageUrl));
-          final response = await request.close();
-          if (response.statusCode == 200) {
-            final bytes = await consolidateHttpClientResponseBytes(response);
-            await file.writeAsBytes(bytes);
-            return file;
-          }
-        } catch (e) {
-          debugPrint('Error restoring face image: $e');
-        }
-      }
-
-      return null;
+      return faceImageUrl;
     } catch (e) {
       debugPrint('Error getting saved image: $e');
       return null;
@@ -124,25 +99,7 @@ class _SavedFaceScreenState extends State<SavedFaceScreen> {
     }
 
     try {
-      // 1. Delete the local image file
-      final doc = await _firestore
-          .collection('face_register')
-          .doc(user.uid)
-          .get();
-      if (doc.exists) {
-        final data = doc.data();
-        final fileName =
-            data?['faceImagePath'] as String? ?? '${user.uid}_face.jpg';
-
-        final directory = await getApplicationDocumentsDirectory();
-        final path = '${directory.path}/$fileName';
-        final file = File(path);
-        if (await file.exists()) {
-          await file.delete();
-        }
-      }
-
-      // 2. Delete the document from face_register collection
+      // Delete the document from face_register collection
       await _firestore.collection('face_register').doc(user.uid).delete();
 
       // 3. Refresh UI and show success message
@@ -202,8 +159,8 @@ class _SavedFaceScreenState extends State<SavedFaceScreen> {
 
     return Scaffold(
       appBar: AppBar(title: Text(l10n.faceProfile), elevation: 0),
-      body: FutureBuilder<File?>(
-        future: _faceImageFuture,
+      body: FutureBuilder<String?>(
+        future: _faceImageUrlFuture,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CupertinoActivityIndicator());
@@ -243,7 +200,7 @@ class _SavedFaceScreenState extends State<SavedFaceScreen> {
     );
   }
 
-  Widget _buildProfileCard(File imageFile) {
+  Widget _buildProfileCard(String imageUrl) {
     final l10n = AppLocalizations.of(context);
     return Center(
       child: Padding(
@@ -264,7 +221,37 @@ class _SavedFaceScreenState extends State<SavedFaceScreen> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              CircleAvatar(radius: 80, backgroundImage: FileImage(imageFile)),
+              Container(
+                width: 160,
+                height: 160,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: Theme.of(context).primaryColor.withOpacity(0.2),
+                    width: 4,
+                  ),
+                ),
+                child: ClipOval(
+                  child: Image.network(
+                    imageUrl,
+                    fit: BoxFit.cover,
+                    loadingBuilder: (context, child, loadingProgress) {
+                      if (loadingProgress == null) return child;
+                      return const Center(child: CupertinoActivityIndicator());
+                    },
+                    errorBuilder: (context, error, stackTrace) {
+                      return Container(
+                        color: Colors.grey[200],
+                        child: Icon(
+                          Icons.person,
+                          size: 80,
+                          color: Colors.grey[400],
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ),
               const SizedBox(height: 24),
               _isUserDataLoading
                   ? const CupertinoActivityIndicator()

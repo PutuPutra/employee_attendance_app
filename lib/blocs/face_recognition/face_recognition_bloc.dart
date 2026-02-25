@@ -1,16 +1,10 @@
-import 'dart:convert';
-import 'dart:io';
 import 'package:camera/camera.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:google_mlkit_face_detection/google_mlkit_face_detection.dart';
 import 'package:gunas_employee_attendance/services/face_detection_service.dart';
 import 'package:gunas_employee_attendance/services/ml_service.dart';
-import 'package:path_provider/path_provider.dart';
-import 'package:http/http.dart' as http;
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 part 'face_recognition_event.dart';
 part 'face_recognition_state.dart';
@@ -21,11 +15,6 @@ class FaceRecognitionBloc
   final MLService _mlService = MLService();
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
-
-  // KONFIGURASI IMAGEKIT
-  String get _imageKitPrivateKey => dotenv.env['IMAGEKIT_PRIVATE_KEY'] ?? '';
-  final String _imageKitUrlEndpoint =
-      'https://upload.imagekit.io/api/v1/files/upload';
 
   List<double>? _registeredEmbedding;
   bool _isProcessing = false;
@@ -59,7 +48,7 @@ class FaceRecognitionBloc
         return;
       }
 
-      // 1. Ambil nama file gambar dari Firestore
+      // 1. Ambil data embedding langsung dari Firestore
       final doc = await _firestore
           .collection('face_register')
           .doc(user.uid)
@@ -70,81 +59,21 @@ class FaceRecognitionBloc
       }
 
       final data = doc.data()!;
-      final faceImageUrl = data['faceImageUrl'] as String?;
-      // Gunakan nama file dari Firestore atau default jika null (Cloud First Strategy)
-      final fileName =
-          data['faceImagePath'] as String? ?? '${user.uid}_face.jpg';
 
-      final directory = await getApplicationDocumentsDirectory();
-      final file = File('${directory.path}/$fileName');
-
-      // 1. PRIORITAS CLOUD: Jika ada URL ImageKit, pastikan file lokal tersedia (Download jika hilang)
-      if (faceImageUrl != null && faceImageUrl.isNotEmpty) {
-        if (!await file.exists()) {
-          debugPrint("Restoring face from ImageKit: $faceImageUrl");
-          try {
-            final response = await http.get(Uri.parse(faceImageUrl));
-            if (response.statusCode == 200) {
-              await file.writeAsBytes(response.bodyBytes);
-              debugPrint("Face restored from ImageKit successfully.");
-            } else {
-              debugPrint(
-                "Failed to download from ImageKit. Status: ${response.statusCode}",
-              );
-            }
-          } catch (e) {
-            debugPrint("Failed to restore face image: $e");
-          }
-        }
-      }
-
-      // 2. VALIDASI: Cek apakah file akhirnya ada (baik dari lokal atau hasil download)
-      if (!await file.exists()) {
-        emit(FaceRecognitionFailure("face_file_not_found"));
+      // Cek apakah field 'embedding' ada
+      if (data['embedding'] == null) {
+        // Jika user lama belum punya embedding di DB, minta register ulang
+        emit(FaceRecognitionFailure("face_data_outdated_please_reregister"));
         return;
       }
 
-      // 3. BACKUP (Legacy): Jika file lokal ada tapi belum ada di ImageKit, upload sekarang.
-      if (faceImageUrl == null) {
-        try {
-          final url = await _uploadToImageKit(file, fileName);
-          await _firestore.collection('face_register').doc(user.uid).update({
-            'faceImageUrl': url,
-          });
-          debugPrint("Face image backed up to ImageKit successfully.");
-        } catch (e) {
-          debugPrint("Failed to backup face to ImageKit: $e");
-        }
-      }
+      // Konversi dynamic list dari Firestore ke List<double>
+      _registeredEmbedding = List<double>.from(data['embedding']);
 
-      // 2. Deteksi wajah pada gambar file
-      // Kita perlu InputImage dari file untuk ML Kit
-      final inputImage = InputImage.fromFilePath(file.path);
-      // Note: FaceDetectionService perlu method untuk handle InputImage langsung atau kita buat instance detector lokal
-      final faceDetector = FaceDetector(
-        options: FaceDetectorOptions(
-          performanceMode: FaceDetectorMode.accurate,
-        ),
+      debugPrint(
+        "✅ Loaded registered embedding from Firestore. Size: ${_registeredEmbedding?.length}",
       );
-
-      try {
-        final faces = await faceDetector.processImage(inputImage);
-
-        if (faces.isEmpty) {
-          emit(FaceRecognitionFailure("no_face_in_registered_photo"));
-          return;
-        }
-
-        // 3. Generate Embedding untuk wajah terdaftar
-        _registeredEmbedding = await _mlService.getEmbeddingFromFile(
-          file,
-          faces.first,
-        );
-
-        emit(FaceNotMatched()); // Siap untuk scan
-      } finally {
-        faceDetector.close();
-      }
+      emit(FaceNotMatched()); // Siap untuk scan
     } catch (e) {
       String message = e.toString();
       if (message.startsWith("Exception: ")) {
@@ -225,32 +154,6 @@ class FaceRecognitionBloc
       debugPrint("Error processing face: $e");
     } finally {
       _isProcessing = false;
-    }
-  }
-
-  Future<String> _uploadToImageKit(File file, String fileName) async {
-    final request = http.MultipartRequest(
-      'POST',
-      Uri.parse(_imageKitUrlEndpoint),
-    );
-
-    request.fields['fileName'] = fileName;
-    request.fields['folder'] = '/attendance/';
-    request.fields['useUniqueFileName'] = 'false';
-
-    final auth = 'Basic ' + base64Encode(utf8.encode('$_imageKitPrivateKey:'));
-    request.headers['Authorization'] = auth;
-
-    request.files.add(await http.MultipartFile.fromPath('file', file.path));
-
-    final response = await request.send();
-
-    if (response.statusCode == 200 || response.statusCode == 201) {
-      final respStr = await response.stream.bytesToString();
-      final json = jsonDecode(respStr);
-      return json['url'];
-    } else {
-      throw Exception('ImageKit Upload Failed: ${response.statusCode}');
     }
   }
 
