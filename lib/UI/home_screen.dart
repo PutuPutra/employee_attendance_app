@@ -30,6 +30,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   StreamSubscription<DocumentSnapshot>? _userSubscription;
   StreamSubscription<QuerySnapshot>? _faceRegisterSubscription;
   StreamSubscription<QuerySnapshot>? _todayAttendanceSubscription;
+  StreamSubscription<QuerySnapshot>? _dailyLogsSubscription;
+  Stream<QuerySnapshot>? _attendanceStream;
+  Map<String, Map<String, dynamic>> _dailyLogs = {};
   bool _hasCheckedInToday = false;
   String? _breakInTime;
   String? _breakOutTime;
@@ -56,6 +59,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     _userSubscription?.cancel();
     _faceRegisterSubscription?.cancel();
     _todayAttendanceSubscription?.cancel();
+    _dailyLogsSubscription?.cancel();
     super.dispose();
   }
 
@@ -126,16 +130,20 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                   _region != newRegion ||
                   _locationName != newLocationName) {
                 final bool idChanged = _employeeId != newEmployeeId;
+
+                if (idChanged) {
+                  _updateFaceRegisterListener(newEmployeeId);
+                  _updateTodayAttendanceListener(newEmployeeId);
+                  _updateDailyLogsListener(newEmployeeId);
+                  _updateAttendanceStream(newEmployeeId);
+                }
+
                 if (mounted) {
                   setState(() {
                     _employeeId = newEmployeeId;
                     _region = newRegion;
                     _locationName = newLocationName;
                   });
-                }
-                if (idChanged) {
-                  _updateFaceRegisterListener(newEmployeeId);
-                  _updateTodayAttendanceListener(newEmployeeId);
                 }
               }
             },
@@ -272,6 +280,48 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     }
   }
 
+  void _updateDailyLogsListener(String employeeId) {
+    _dailyLogsSubscription?.cancel();
+    if (employeeId.isNotEmpty) {
+      _dailyLogsSubscription = FirebaseFirestore.instance
+          .collection('daily_work_logs')
+          .where('id_karyawan', isEqualTo: employeeId)
+          .snapshots()
+          .listen(
+            (snapshot) {
+              final Map<String, Map<String, dynamic>> newLogs = {};
+              for (var doc in snapshot.docs) {
+                final data = doc.data();
+                final dateStr = data['date'] as String?;
+                if (dateStr != null) {
+                  newLogs[dateStr] = data;
+                }
+              }
+              if (mounted) {
+                setState(() {
+                  _dailyLogs = newLogs;
+                });
+              }
+            },
+            onError: (e) {
+              debugPrint("Error listening to daily logs: $e");
+            },
+          );
+    }
+  }
+
+  void _updateAttendanceStream(String employeeId) {
+    if (employeeId.isEmpty) {
+      _attendanceStream = const Stream.empty();
+    } else {
+      debugPrint("🔍 Fetching attendance for Employee ID: $employeeId");
+      _attendanceStream = FirebaseFirestore.instance
+          .collection('user_attendance')
+          .where('id_karyawan', isEqualTo: employeeId)
+          .snapshots();
+    }
+  }
+
   void _handleAttendanceAction(String type) {
     final now = DateTime.now();
     final l10n = AppLocalizations.of(context);
@@ -363,21 +413,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   // Helper to get the end of the day
   DateTime _endOfDay(DateTime date) {
     return DateTime(date.year, date.month, date.day, 23, 59, 59, 999);
-  }
-
-  Stream<QuerySnapshot> _getAttendanceStream() {
-    if (_employeeId == null || _employeeId!.isEmpty) {
-      return const Stream.empty();
-    }
-
-    debugPrint("🔍 Fetching attendance for Employee ID: $_employeeId");
-
-    // UPDATE: Kita hapus orderBy dan limit di server untuk menghindari error "Requires Index".
-    // Kita akan ambil semua data user ini, lalu sort dan limit di sisi aplikasi (client-side).
-    return FirebaseFirestore.instance
-        .collection('user_attendance')
-        .where('id_karyawan', isEqualTo: _employeeId)
-        .snapshots();
   }
 
   @override
@@ -614,7 +649,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                                   child: CupertinoActivityIndicator(),
                                 )
                               : StreamBuilder<QuerySnapshot>(
-                                  stream: _getAttendanceStream(),
+                                  stream: _attendanceStream,
                                   builder: (context, snapshot) {
                                     if (snapshot.hasError) {
                                       debugPrint(
@@ -653,6 +688,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                                       if (dateStr == null) continue;
 
                                       if (!groupedData.containsKey(dateStr)) {
+                                        final dailyLog = _dailyLogs[dateStr];
                                         groupedData[dateStr] = {
                                           'date': dateStr,
                                           'timestamp':
@@ -663,6 +699,19 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                                           'statusCheckIn':
                                               1, // Default to on-time
                                           'checkOut': null,
+                                          'time_late':
+                                              dailyLog?['time_late'] ?? '00:00',
+                                          'early_leaving':
+                                              dailyLog?['early_leaving'] ??
+                                              '00:00',
+                                          'overtime':
+                                              dailyLog?['overtime'] ?? '00:00',
+                                          'total_work':
+                                              dailyLog?['total_work'] ??
+                                              '00:00',
+                                          'total_rest':
+                                              dailyLog?['total_rest'] ??
+                                              '00:00',
                                         };
                                       }
 
@@ -985,36 +1034,45 @@ class _ProfileHeader extends StatelessWidget {
           employeeId = data?[StorageKeys.employeeId] ?? l10n.notAvailable;
         }
 
-        return Row(
-          children: [
-            const CircleAvatar(
-              radius: 22,
-              backgroundColor: Colors.white24,
-              child: Icon(CupertinoIcons.person_fill, color: Colors.white),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    username,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w600,
-                    ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  Text(
-                    employeeId,
-                    style: const TextStyle(fontSize: 12, color: Colors.white70),
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ],
+        return GestureDetector(
+          onTap: () => Navigator.push(
+            context,
+            CupertinoPageRoute(builder: (_) => const AccountSettingsScreen()),
+          ),
+          child: Row(
+            children: [
+              const CircleAvatar(
+                radius: 22,
+                backgroundColor: Colors.white24,
+                child: Icon(CupertinoIcons.person_fill, color: Colors.white),
               ),
-            ),
-          ],
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      username,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w600,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    Text(
+                      employeeId,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: Colors.white70,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
         );
       },
     );
@@ -1098,11 +1156,18 @@ class _IOSActionCard extends StatelessWidget {
 }
 
 /// ================= HISTORY CARD =================
-class _IOSHistoryCard extends StatelessWidget {
+class _IOSHistoryCard extends StatefulWidget {
   final Map<String, dynamic> data;
   final String? locationName;
 
   const _IOSHistoryCard({super.key, required this.data, this.locationName});
+
+  @override
+  State<_IOSHistoryCard> createState() => _IOSHistoryCardState();
+}
+
+class _IOSHistoryCardState extends State<_IOSHistoryCard> {
+  bool _isExpanded = false;
 
   String _formatTime(dynamic timestamp) {
     if (timestamp == null) return '--:--';
@@ -1118,15 +1183,22 @@ class _IOSHistoryCard extends StatelessWidget {
     final l10n = AppLocalizations.of(context);
 
     // Extract data
-    final timestamp = data['timestamp'] as Timestamp?;
+    final timestamp = widget.data['timestamp'] as Timestamp?;
     final date = timestamp?.toDate() ?? DateTime.now();
 
-    final checkIn = data['checkIn'];
-    final statusCheckIn = data['statusCheckIn']; // 1: On-time, 2: Late
+    final checkIn = widget.data['checkIn'];
+    final statusCheckIn = widget.data['statusCheckIn']; // 1: On-time, 2: Late
     final isLate = statusCheckIn == 2;
-    final breakStart = data['breakStart'];
-    final breakEnd = data['breakEnd'];
-    final checkOut = data['checkOut'];
+    final breakStart = widget.data['breakStart'];
+    final breakEnd = widget.data['breakEnd'];
+    final checkOut = widget.data['checkOut'];
+
+    // Extract calculated data
+    final timeLate = widget.data['time_late']?.toString() ?? '00:00';
+    final earlyLeaving = widget.data['early_leaving']?.toString() ?? '00:00';
+    final overtime = widget.data['overtime']?.toString() ?? '00:00';
+    final totalWork = widget.data['total_work']?.toString() ?? '00:00';
+    final totalRest = widget.data['total_rest']?.toString() ?? '00:00';
 
     final localeCode = Localizations.localeOf(context).languageCode;
     final formattedDay = DateFormat('EEEE', localeCode).format(date);
@@ -1134,50 +1206,203 @@ class _IOSHistoryCard extends StatelessWidget {
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
-      child: Container(
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: isDark ? Colors.grey[850] : CupertinoColors.white,
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  formattedDay,
-                  style: TextStyle(
-                    fontWeight: FontWeight.w600,
-                    color: isDark ? Colors.white : Colors.black,
+      child: GestureDetector(
+        onTap: () {
+          setState(() {
+            _isExpanded = !_isExpanded;
+          });
+        },
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 400),
+          curve: Curves.fastLinearToSlowEaseIn,
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: isDark ? Colors.grey[850] : CupertinoColors.white,
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: _isExpanded
+                ? [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.1),
+                      blurRadius: 12,
+                      offset: const Offset(0, 6),
+                    ),
+                  ]
+                : [],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Row(
+                    children: [
+                      Text(
+                        formattedDay,
+                        style: TextStyle(
+                          fontWeight: FontWeight.w600,
+                          color: isDark ? Colors.white : Colors.black,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      AnimatedRotation(
+                        turns: _isExpanded ? 0.5 : 0,
+                        duration: const Duration(milliseconds: 400),
+                        curve: Curves.fastLinearToSlowEaseIn,
+                        child: const Icon(
+                          CupertinoIcons.chevron_down,
+                          size: 14,
+                          color: Colors.grey,
+                        ),
+                      ),
+                    ],
                   ),
-                ),
-                Text(
-                  formattedDate,
-                  style: const TextStyle(color: CupertinoColors.systemGrey),
-                ),
-              ],
-            ),
-            const SizedBox(height: 10),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                _Time(
-                  label: l10n.entry,
-                  time: _formatTime(checkIn),
-                  isLate: isLate,
-                ),
-                if (locationName != 'Head Office') ...[
-                  _Time(label: l10n.breakTime, time: _formatTime(breakStart)),
-                  _Time(label: l10n.returnTime, time: _formatTime(breakEnd)),
+                  Text(
+                    formattedDate,
+                    style: const TextStyle(color: CupertinoColors.systemGrey),
+                  ),
                 ],
-                _Time(label: l10n.exit, time: _formatTime(checkOut)),
-              ],
-            ),
-          ],
+              ),
+              const SizedBox(height: 10),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                children: [
+                  _Time(
+                    label: l10n.entry,
+                    time: _formatTime(checkIn),
+                    isLate: isLate,
+                  ),
+                  if (widget.locationName != 'Head Office') ...[
+                    _Time(label: l10n.breakTime, time: _formatTime(breakStart)),
+                    _Time(label: l10n.returnTime, time: _formatTime(breakEnd)),
+                  ],
+                  _Time(label: l10n.exit, time: _formatTime(checkOut)),
+                ],
+              ),
+
+              // === EXPANDED DETAILS ===
+              AnimatedSize(
+                duration: const Duration(milliseconds: 400),
+                curve: Curves.fastLinearToSlowEaseIn,
+                alignment: Alignment.topCenter,
+                child: _isExpanded
+                    ? Column(
+                        children: [
+                          const SizedBox(height: 12),
+                          Divider(
+                            color: isDark ? Colors.grey[700] : Colors.grey[300],
+                            height: 1,
+                          ),
+                          const SizedBox(height: 12),
+                          // Row 1: Status Metrics
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceAround,
+                            children: [
+                              _DetailInfo(
+                                label: l10n.late,
+                                value: timeLate,
+                                valueColor: isLate
+                                    ? CupertinoColors.systemRed
+                                    : CupertinoColors.systemGrey,
+                              ),
+                              _DetailInfo(
+                                label: l10n.earlyLeaving,
+                                value: earlyLeaving,
+                                valueColor: CupertinoColors.systemOrange,
+                              ),
+                              _DetailInfo(
+                                label: l10n.overtime,
+                                value: overtime,
+                                valueColor: CupertinoColors.systemGreen,
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+                          // Row 2: Totals
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              vertical: 8,
+                              horizontal: 12,
+                            ),
+                            decoration: BoxDecoration(
+                              color: isDark
+                                  ? Colors.grey[800]
+                                  : Colors.grey[100],
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceAround,
+                              children: [
+                                _DetailInfo(
+                                  label: l10n.totalWork,
+                                  value: totalWork,
+                                  isBold: true,
+                                  valueColor: isDark
+                                      ? Colors.white
+                                      : Colors.black,
+                                ),
+                                Container(
+                                  width: 1,
+                                  height: 24,
+                                  color: Colors.grey[400],
+                                ),
+                                _DetailInfo(
+                                  label: l10n.totalRest,
+                                  value: totalRest,
+                                  isBold: true,
+                                  valueColor: CupertinoColors.systemGrey,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      )
+                    : const SizedBox(width: double.infinity),
+              ),
+            ],
+          ),
         ),
       ),
+    );
+  }
+}
+
+/// ================= DETAIL INFO WIDGET =================
+class _DetailInfo extends StatelessWidget {
+  final String label;
+  final String value;
+  final Color? valueColor;
+  final bool isBold;
+
+  const _DetailInfo({
+    required this.label,
+    required this.value,
+    this.valueColor,
+    this.isBold = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Column(
+      children: [
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 11,
+            color: isDark ? Colors.grey[400] : Colors.grey[600],
+          ),
+        ),
+        const SizedBox(height: 2),
+        Text(
+          value,
+          style: TextStyle(
+            fontSize: 13,
+            fontWeight: isBold ? FontWeight.w700 : FontWeight.w600,
+            color: valueColor ?? (isDark ? Colors.white : Colors.black),
+          ),
+        ),
+      ],
     );
   }
 }

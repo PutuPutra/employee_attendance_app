@@ -7,6 +7,7 @@ import 'package:flutter/foundation.dart';
 import 'package:intl/intl.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import './attendance_calculator.dart';
 
 part 'attendance_event.dart';
 part 'attendance_state.dart';
@@ -24,6 +25,124 @@ class AttendanceBloc extends Bloc<AttendanceEvent, AttendanceState> {
     on<SubmitAttendance>(_onSubmitAttendance);
   }
 
+  // Helper untuk parse string waktu "HH:mm" ke DateTime pada tanggal tertentu
+  DateTime? _parseTime(String? timeStr, DateTime date) {
+    if (timeStr == null || !timeStr.contains(':')) return null;
+    try {
+      final parts = timeStr.split(':');
+      return DateTime(
+        date.year,
+        date.month,
+        date.day,
+        int.parse(parts[0]),
+        int.parse(parts[1]),
+      );
+    } catch (e) {
+      return null;
+    }
+  }
+
+  // Helper untuk mengambil jadwal attendance (CheckIn, CheckOut, Break)
+  Future<Map<String, DateTime>> _getAttendanceSchedule(
+    String employeeId,
+    DateTime now,
+  ) async {
+    String? companyId;
+    String? locationId;
+
+    // 1. Ambil Data User
+    try {
+      final userQuery = await _firestore
+          .collection('users')
+          .where('id_karyawan', isEqualTo: employeeId)
+          .limit(1)
+          .get();
+
+      if (userQuery.docs.isNotEmpty) {
+        final userData = userQuery.docs.first.data();
+        companyId = userData['company_id']?.toString();
+        final locId = userData['location_id']?.toString();
+        if (locId != null && locId.trim().isNotEmpty) {
+          locationId = locId.trim();
+        }
+      }
+    } catch (e) {
+      debugPrint("Error fetching user data for settings: $e");
+    }
+
+    // 2. Ambil Settings
+    String? scheduledCheckInTime;
+    String? scheduledCheckOutTime;
+    String? scheduledBreakInTime;
+    String? scheduledBreakOutTime;
+
+    if (companyId != null) {
+      try {
+        final futures = <Future<DocumentSnapshot>>[
+          _firestore.collection('companies').doc(companyId).get(),
+        ];
+        if (locationId != null) {
+          futures.add(_firestore.collection('locations').doc(locationId).get());
+        }
+
+        final results = await Future.wait(futures);
+        final companyDoc = results[0];
+        final locationDoc = (results.length > 1) ? results[1] : null;
+
+        Map<String, dynamic>? companySettings;
+        if (companyDoc.exists) {
+          final data = companyDoc.data() as Map<String, dynamic>?;
+          if (data != null && data['settings'] != null) {
+            companySettings = Map<String, dynamic>.from(data['settings']);
+          }
+        }
+
+        Map<String, dynamic>? locationSettings;
+        if (locationDoc != null && locationDoc.exists) {
+          final data = locationDoc.data() as Map<String, dynamic>?;
+          if (data != null && data['settings'] != null) {
+            locationSettings = Map<String, dynamic>.from(data['settings']);
+          }
+        }
+
+        String? getSetting(String key) {
+          if (locationSettings != null &&
+              locationSettings[key]?.toString().isNotEmpty == true) {
+            return locationSettings[key].toString();
+          }
+          if (companySettings != null &&
+              companySettings[key]?.toString().isNotEmpty == true) {
+            return companySettings[key].toString();
+          }
+          return null;
+        }
+
+        scheduledCheckInTime = getSetting('check_in_time');
+        scheduledCheckOutTime = getSetting('check_out_time');
+        scheduledBreakInTime = getSetting('break_in_time');
+        scheduledBreakOutTime = getSetting('break_out_time');
+      } catch (e) {
+        debugPrint("Error fetching settings: $e");
+      }
+    }
+
+    // 3. Parse Times
+    return {
+      'checkIn':
+          _parseTime(scheduledCheckInTime, now) ??
+          DateTime(now.year, now.month, now.day, 8, 0),
+      'checkOut':
+          _parseTime(scheduledCheckOutTime, now) ??
+          DateTime(now.year, now.month, now.day, 17, 0),
+      'breakIn':
+          _parseTime(scheduledBreakInTime, now) ??
+          DateTime(now.year, now.month, now.day, 12, 0),
+      'breakOut':
+          _parseTime(scheduledBreakOutTime, now) ??
+          DateTime(now.year, now.month, now.day, 13, 0),
+    };
+  }
+
   Future<void> _onSubmitAttendance(
     SubmitAttendance event,
     Emitter<AttendanceState> emit,
@@ -33,6 +152,8 @@ class AttendanceBloc extends Bloc<AttendanceEvent, AttendanceState> {
       final now = DateTime.now();
       // Tetap simpan date string untuk keperluan query di HomeScreen (cek sudah absen hari ini)
       final dateStr = DateFormat('MMMM d, yyyy').format(now);
+      final docIdDatePart = DateFormat('yyyy-MM-dd').format(now);
+      final dailyLogDocId = '${event.employeeId}_$docIdDatePart';
 
       // Mapping attendanceType ke status code
       int status = 0;
@@ -52,107 +173,11 @@ class AttendanceBloc extends Bloc<AttendanceEvent, AttendanceState> {
       }
 
       // --- LOGIC PENENTUAN JAM MASUK (CASCADING SETTINGS) ---
-
-      // 1. Ambil Data User untuk mendapatkan company_id dan location_id
-      String? companyId;
-      String? locationId;
-
-      try {
-        final userQuery = await _firestore
-            .collection('users')
-            .where('id_karyawan', isEqualTo: event.employeeId)
-            .limit(1)
-            .get();
-
-        if (userQuery.docs.isNotEmpty) {
-          final userData = userQuery.docs.first.data();
-          companyId = userData['company_id']?.toString();
-          locationId = userData['location_id']?.toString();
-        }
-      } catch (e) {
-        debugPrint("Error fetching user data for settings: $e");
-      }
-
-      // 2. Ambil Settings dari Company dan Location
-      String? scheduledCheckInTime;
-
-      if (companyId != null) {
-        try {
-          final futures = <Future<DocumentSnapshot>>[
-            _firestore.collection('companies').doc(companyId).get(),
-          ];
-
-          if (locationId != null) {
-            futures.add(
-              _firestore.collection('locations').doc(locationId).get(),
-            );
-          }
-
-          final results = await Future.wait(futures);
-          final companyDoc = results[0];
-          final locationDoc = (results.length > 1) ? results[1] : null;
-
-          Map<String, dynamic>? companySettings;
-          if (companyDoc.exists) {
-            final data = companyDoc.data() as Map<String, dynamic>?;
-            if (data != null && data['settings'] != null) {
-              companySettings = data['settings'] as Map<String, dynamic>;
-            }
-          }
-
-          Map<String, dynamic>? locationSettings;
-          if (locationDoc != null && locationDoc.exists) {
-            final data = locationDoc.data() as Map<String, dynamic>?;
-            if (data != null && data['settings'] != null) {
-              locationSettings = data['settings'] as Map<String, dynamic>;
-            }
-          }
-
-          // Logic: Location > Company
-          if (locationSettings != null &&
-              locationSettings['check_in_time'] != null) {
-            scheduledCheckInTime = locationSettings['check_in_time']
-                ?.toString();
-          } else if (companySettings != null &&
-              companySettings['check_in_time'] != null) {
-            scheduledCheckInTime = companySettings['check_in_time']?.toString();
-          }
-        } catch (e) {
-          debugPrint("Error fetching settings: $e");
-        }
-      }
-
-      // 3. Tentukan Status CheckIn
-      // Default status adalah 1 (Tepat Waktu) jika tidak ada setting jam masuk di Firebase
-      int statusCheckIn = 1;
-
-      if (scheduledCheckInTime != null) {
-        try {
-          final parts = scheduledCheckInTime.split(':');
-          if (parts.length == 2) {
-            final int hour = int.parse(parts[0]);
-            final int minute = int.parse(parts[1]);
-
-            final limitTime = DateTime(
-              now.year,
-              now.month,
-              now.day,
-              hour,
-              minute,
-              0,
-            );
-
-            // Toleransi 5 menit. Jika lebih dari 5 menit, maka terlambat.
-            final lateThreshold = limitTime.add(const Duration(minutes: 5));
-
-            if (now.isAfter(lateThreshold)) {
-              statusCheckIn = 2;
-            }
-          }
-        } catch (e) {
-          debugPrint("Error parsing check_in_time: $e");
-        }
-      }
+      final schedule = await _getAttendanceSchedule(event.employeeId, now);
+      final defaultCheckIn = schedule['checkIn']!;
+      final defaultCheckOut = schedule['checkOut']!;
+      final defaultBreakIn = schedule['breakIn']!;
+      final defaultBreakOut = schedule['breakOut']!;
 
       // Upload to ImageKit (Backup Cloud)
       String? imageUrl;
@@ -168,8 +193,17 @@ class AttendanceBloc extends Bloc<AttendanceEvent, AttendanceState> {
         debugPrint("Warning: Gagal upload attendance ke ImageKit: $e");
       }
 
-      // Selalu simpan data baru (Add Document)
-      await _firestore.collection('user_attendance').add({
+      // 4. Save to user_attendance (Raw Log)
+      // Calculate statusCheckIn for the log entry itself (useful for UI)
+      int statusCheckIn = 1;
+      if (status == 1) {
+        final lateThreshold = defaultCheckIn.add(const Duration(minutes: 5));
+        if (now.isAfter(lateThreshold)) {
+          statusCheckIn = 2;
+        }
+      }
+
+      final Map<String, dynamic> attendanceData = {
         'id_karyawan': event.employeeId,
         'name': event.name,
         'imagePath': event.imagePath,
@@ -177,12 +211,29 @@ class AttendanceBloc extends Bloc<AttendanceEvent, AttendanceState> {
         'latitude': event.latitude,
         'longitude': event.longitude,
         'status': status, // 1=CheckIn, 2=Break, 3=Return, 4=CheckOut
-        'statusCheckIn': statusCheckIn, // 1=Tepat Waktu, 2=Terlambat
         'timestamp': FieldValue.serverTimestamp(),
         'date': dateStr, // Disimpan untuk memudahkan query per hari
         'is_synced':
             false, // Flag bantu: Laravel akan query data yang is_synced == false
-      });
+      };
+
+      if (status == 1) {
+        attendanceData['statusCheckIn'] = statusCheckIn;
+      }
+
+      await _firestore.collection('user_attendance').add(attendanceData);
+
+      // 5. Calculate Metrics & Save (Delegated to Helper which fetches realtime data)
+      await AttendanceCalculator.updateDailyLog(
+        firestore: _firestore,
+        employeeId: event.employeeId,
+        employeeName: event.name,
+        defaultCheckIn: defaultCheckIn,
+        defaultCheckOut: defaultCheckOut,
+        defaultBreakIn: defaultBreakIn,
+        defaultBreakOut: defaultBreakOut,
+        now: now,
+      );
 
       // Hapus file lokal jika upload berhasil untuk menghemat storage
       if (imageUrl != null) {

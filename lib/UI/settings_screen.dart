@@ -13,7 +13,6 @@ import '../core/enums/language_option.dart';
 import '../core/enums/font_option.dart';
 import '../l10n/app_localizations.dart';
 import './saved_face_screen.dart';
-import './account_settings_screen.dart'; // <-- DIIMPOR
 import './update_email_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -297,25 +296,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
             return ListView(
               children: [
-                // =========== BAGIAN AKUN BARU ===========
-                _sectionHeader(l10n.account),
-                _sectionCard([
-                  _iosTile(
-                    icon: CupertinoIcons.person_circle,
-                    title: l10n.profile,
-                    subtitle: l10n.editProfileDesc,
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const AccountSettingsScreen(),
-                        ),
-                      );
-                    },
-                  ),
-                ]),
-
-                // ========================================
                 _sectionHeader(l10n.faceRecognition),
                 _sectionCard([
                   _iosTile(

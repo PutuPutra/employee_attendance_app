@@ -344,6 +344,18 @@ class AppLocalizations {
       _localizedValues[locale.languageCode]!['want_to_proceed']!;
   String get proceed => _localizedValues[locale.languageCode]!['proceed']!;
 
+  // History Detail
+  String get late => _localizedValues[locale.languageCode]!['late']!;
+  String get earlyLeaving =>
+      _localizedValues[locale.languageCode]!['early_leaving']!;
+  String get overtime => _localizedValues[locale.languageCode]!['overtime']!;
+  String get totalWork => _localizedValues[locale.languageCode]!['total_work']!;
+  String get totalRest => _localizedValues[locale.languageCode]!['total_rest']!;
+  String get checkInternetConnection =>
+      _localizedValues[locale.languageCode]!['check_internet_connection']!;
+  String get systemError =>
+      _localizedValues[locale.languageCode]!['system_error']!;
+
   // ===== Localized Values Map =====
   static const Map<String, Map<String, String>> _localizedValues = {
     'en': {
@@ -552,6 +564,15 @@ class AppLocalizations {
       'not_yet_time': 'It is not yet time for',
       'want_to_proceed': 'Do you want to proceed?',
       'proceed': 'Proceed',
+
+      // History Detail
+      'late': 'Late',
+      'early_leaving': 'Early Leave',
+      'overtime': 'Overtime',
+      'total_work': 'Total Work',
+      'total_rest': 'Total Rest',
+      'check_internet_connection': 'Please check your internet connection.',
+      'system_error': 'System configuration error.',
     },
     'id': {
       // Common
@@ -763,6 +784,15 @@ class AppLocalizations {
       'not_yet_time': 'Belum waktunya untuk',
       'want_to_proceed': 'Apakah Anda ingin melanjutkan?',
       'proceed': 'Lanjutkan',
+
+      // History Detail
+      'late': 'Terlambat',
+      'early_leaving': 'Plg. Cepat',
+      'overtime': 'Lembur',
+      'total_work': 'Total Kerja',
+      'total_rest': 'Total Istirahat',
+      'check_internet_connection': 'Mohon periksa koneksi internet Anda.',
+      'system_error': 'Kesalahan konfigurasi sistem.',
     },
   };
 }

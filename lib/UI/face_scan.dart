@@ -284,9 +284,21 @@ class _FaceScanViewState extends State<FaceScanView> {
               });
             } else if (state is AttendanceFailure) {
               setState(() => _isSubmittingAuto = false);
+
+              String errorMsg = state.error;
+              // Handle specific Firestore index error or connection issues
+              if (errorMsg.contains('requires an index') ||
+                  errorMsg.contains('failed-precondition')) {
+                errorMsg =
+                    '${l10n.systemError}\n${l10n.checkInternetConnection}';
+              } else if (errorMsg.contains('unavailable') ||
+                  errorMsg.contains('network')) {
+                errorMsg = l10n.checkInternetConnection;
+              }
+
               _showTopNotification(
                 context,
-                '${l10n.attendanceFailed}\n${state.error}',
+                '${l10n.attendanceFailed}\n$errorMsg',
                 isError: true,
               );
             }
