@@ -8,7 +8,7 @@ import 'package:intl/intl.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import './attendance_calculator.dart';
-
+import 'package:image/image.dart' as img;
 part 'attendance_event.dart';
 part 'attendance_state.dart';
 
@@ -278,5 +278,37 @@ class AttendanceBloc extends Bloc<AttendanceEvent, AttendanceState> {
     } else {
       throw Exception('ImageKit Upload Failed: ${response.statusCode}');
     }
+  }
+
+  Future<File> convertToJpg(File originalFile) async {
+    // 1. Baca file gambar asli
+    final bytes = await originalFile.readAsBytes();
+
+    // 2. Decode gambar menggunakan package 'image'
+    final image = img.decodeImage(bytes);
+
+    if (image == null) {
+      throw Exception("Gagal membaca gambar");
+    }
+
+    // 3. Perbaiki orientasi (penting untuk hasil kamera HP agar tidak miring)
+    // Fungsi bakeOrientation sudah kamu pakai juga di ml_service.dart
+    final fixedImage = img.bakeOrientation(image);
+
+    // 4. Encode (ubah) menjadi format JPG
+    // quality: 85 adalah standar yang bagus (seimbang antara size dan kualitas)
+    final jpgBytes = img.encodeJpg(fixedImage, quality: 85);
+
+    // 5. Buat path baru dengan ekstensi .jpg
+    final newPath = originalFile.path.replaceAll(
+      RegExp(r'\.[a-zA-Z0-9]+$'),
+      '.jpg',
+    );
+
+    // 6. Tulis bytes ke file baru
+    final newFile = File(newPath);
+    await newFile.writeAsBytes(jpgBytes);
+
+    return newFile; // File ini siap di-upload ke ImageKit
   }
 }

@@ -74,7 +74,7 @@ class _AppView extends StatelessWidget {
 
         return MaterialApp(
           debugShowCheckedModeBanner: false,
-          title: 'Clock Point',
+          title: 'SSG',
 
           // Theme configuration
           theme: _buildThemeData(Brightness.light, fontFamily),

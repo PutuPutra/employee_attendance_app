@@ -79,16 +79,18 @@ class FaceRecognitionBloc
       final file = File('${directory.path}/$fileName');
 
       // 1. PRIORITAS CLOUD: Jika ada URL ImageKit, pastikan file lokal tersedia (Download jika hilang)
-      if (faceImageUrl != null) {
+      if (faceImageUrl != null && faceImageUrl.isNotEmpty) {
         if (!await file.exists()) {
-          debugPrint("Restoring face from ImageKit...");
+          debugPrint("Restoring face from ImageKit: $faceImageUrl");
           try {
-            final request = await HttpClient().getUrl(Uri.parse(faceImageUrl));
-            final response = await request.close();
+            final response = await http.get(Uri.parse(faceImageUrl));
             if (response.statusCode == 200) {
-              final bytes = await consolidateHttpClientResponseBytes(response);
-              await file.writeAsBytes(bytes);
-              debugPrint("Face restored from ImageKit.");
+              await file.writeAsBytes(response.bodyBytes);
+              debugPrint("Face restored from ImageKit successfully.");
+            } else {
+              debugPrint(
+                "Failed to download from ImageKit. Status: ${response.statusCode}",
+              );
             }
           } catch (e) {
             debugPrint("Failed to restore face image: $e");
