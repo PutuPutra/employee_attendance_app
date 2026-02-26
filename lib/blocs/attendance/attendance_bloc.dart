@@ -184,7 +184,15 @@ class AttendanceBloc extends Bloc<AttendanceEvent, AttendanceState> {
       String? imageUrl;
       try {
         final fileName =
-            '${event.employeeId}_attendance_${DateFormat('yyyyMMdd_HHmmss').format(now)}.jpg';
+            '${event.employeeId}_${event.name}_attendance_${DateFormat('yyyyMMdd_HHmmss').format(now)}.jpg';
+
+        // Construct dynamic folder path
+        final String year = DateFormat('yyyy').format(now);
+        final String month = DateFormat('MMMM').format(now);
+        final String safeName = event.name.replaceAll(RegExp(r'\s+'), '_');
+        final String folderPath =
+            '/face_attendance/$year/$month/${event.employeeId}_$safeName/';
+
         if (_imageKitPrivateKey.isEmpty) {
           debugPrint("Warning: IMAGEKIT_PRIVATE_KEY tidak ditemukan di .env");
         } else {
@@ -194,7 +202,11 @@ class AttendanceBloc extends Bloc<AttendanceEvent, AttendanceState> {
           final File processedImage = await _convertToJpg(
             File(event.imagePath),
           );
-          imageUrl = await _uploadToImageKit(processedImage, fileName);
+          imageUrl = await _uploadToImageKit(
+            processedImage,
+            fileName,
+            folderPath,
+          );
 
           // Hapus file temporary hasil proses agar tidak menumpuk di cache
           if (await processedImage.exists()) {
@@ -265,14 +277,18 @@ class AttendanceBloc extends Bloc<AttendanceEvent, AttendanceState> {
     }
   }
 
-  Future<String> _uploadToImageKit(File file, String fileName) async {
+  Future<String> _uploadToImageKit(
+    File file,
+    String fileName,
+    String folderPath,
+  ) async {
     final request = http.MultipartRequest(
       'POST',
       Uri.parse(_imageKitUrlEndpoint),
     );
 
     request.fields['fileName'] = fileName;
-    request.fields['folder'] = '/face_attendance/';
+    request.fields['folder'] = folderPath;
     request.fields['useUniqueFileName'] = 'false';
 
     // Basic Auth menggunakan Private Key
