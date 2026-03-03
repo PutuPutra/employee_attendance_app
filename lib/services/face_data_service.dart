@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:camera/camera.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
@@ -15,14 +16,12 @@ class FaceDataService {
   final _auth = FirebaseAuth.instance;
   final _firestore = FirebaseFirestore.instance;
 
-  // KONFIGURASI IMAGEKIT
-  // ⚠️ PENTING: Masukkan Private Key Anda di sini
-  String get _imageKitPrivateKey => dotenv.env['IMAGEKIT_PRIVATE_KEY'] ?? '';
-  final String _imageKitUrlEndpoint =
-      'https://upload.imagekit.io/api/v1/files/upload';
+  // KONFIGURASI LARAVEL STORAGE
+  String get _laravelUploadEndpoint {
+    return dotenv.env['LARAVEL_FACE_REGISTER_UPLOAD_ENDPOINT'] ?? '';
+  }
 
-  /// Registers face: Generates embedding, uploads to ImageKit, saves to Firestore.
-  /// Returns the ImageKit URL.
+  /// Registers face: Generates embedding, uploads to laravel, saves to Firestore.
   Future<String?> registerFace(XFile imageFile) async {
     final user = _auth.currentUser;
     if (user == null) {
@@ -67,21 +66,35 @@ class FaceDataService {
         throw Exception('Employee ID not found for the current user.');
       }
 
-      // 4. Upload to ImageKit
+      // 4. Upload to Laravel
       final timestamp = DateTime.now().millisecondsSinceEpoch;
       final fileName = '${user.uid}_face_register_$timestamp.jpg';
       String? faceImageUrl;
 
       try {
-        if (_imageKitPrivateKey.isEmpty) {
-          print("Warning: IMAGEKIT_PRIVATE_KEY tidak ditemukan di .env");
-        } else {
-          // Konversi ke JPG & perbaiki orientasi sebelum upload agar preview muncul
-          final processedFile = await _convertToJpg(file);
-          faceImageUrl = await _uploadToImageKit(processedFile, fileName);
+        // Konversi ke JPG & perbaiki orientasi sebelum upload agar preview muncul
+        final processedFile = await _convertToJpg(file);
+
+        final String safeName = (name ?? 'Unknown').replaceAll(
+          RegExp(r'\s+'),
+          '_',
+        );
+        final String folderPath = 'face_register/${employeeId}_$safeName';
+
+        faceImageUrl = await _uploadToLaravel(
+          processedFile,
+          fileName,
+          folderPath,
+          employeeId,
+          name ?? 'Unknown',
+        );
+
+        // Hapus file temporary
+        if (await processedFile.exists()) {
+          await processedFile.delete();
         }
       } catch (e) {
-        print("Warning: Gagal upload ke ImageKit: $e");
+        debugPrint("Warning: Gagal upload ke Laravel: $e");
         // Opsional: Throw error jika ImageKit wajib
         // throw Exception("Failed to upload image to cloud.");
       }
@@ -108,30 +121,45 @@ class FaceDataService {
     }
   }
 
-  Future<String> _uploadToImageKit(File file, String fileName) async {
-    final request = http.MultipartRequest(
-      'POST',
-      Uri.parse(_imageKitUrlEndpoint),
+  Future<String> _uploadToLaravel(
+    File file,
+    String fileName,
+    String folderPath,
+    String employeeId,
+    String name,
+  ) async {
+    final uri = Uri.parse(_laravelUploadEndpoint);
+    final request = http.MultipartRequest('POST', uri);
+
+    request.headers['Accept'] = 'application/json';
+
+    // Kirim data tambahan
+    request.fields['employee_id'] = employeeId;
+    request.fields['first_name'] = name;
+    request.fields['folder_path'] = folderPath;
+
+    request.files.add(
+      await http.MultipartFile.fromPath('image', file.path, filename: fileName),
     );
 
-    request.fields['fileName'] = fileName;
-    request.fields['folder'] = '/face_registration/';
-    request.fields['useUniqueFileName'] = 'false';
-
-    // Basic Auth menggunakan Private Key
-    final auth = 'Basic ' + base64Encode(utf8.encode('$_imageKitPrivateKey:'));
-    request.headers['Authorization'] = auth;
-
-    request.files.add(await http.MultipartFile.fromPath('file', file.path));
-
-    final response = await request.send();
+    final response = await request.send().timeout(
+      const Duration(seconds: 15),
+      onTimeout: () {
+        throw Exception(
+          'Connection Timeout. Cek IP Address Server: $_laravelUploadEndpoint',
+        );
+      },
+    );
 
     if (response.statusCode == 200 || response.statusCode == 201) {
       final respStr = await response.stream.bytesToString();
       final json = jsonDecode(respStr);
-      return json['url']; // URL gambar dari ImageKit
+      return json['url'];
     } else {
-      throw Exception('ImageKit Upload Failed: ${response.statusCode}');
+      final errorBody = await response.stream.bytesToString();
+      throw Exception(
+        'Laravel Upload Failed: ${response.statusCode}, Body: $errorBody',
+      );
     }
   }
 

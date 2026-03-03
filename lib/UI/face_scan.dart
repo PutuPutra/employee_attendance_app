@@ -111,6 +111,13 @@ class _FaceScanViewState extends State<FaceScanView> {
 
   @override
   void dispose() {
+    // Coba hentikan stream jika masih aktif untuk mengurangi log error buffer
+    try {
+      if (_cameraService.controller != null &&
+          _cameraService.controller!.value.isStreamingImages) {
+        _cameraService.controller!.stopImageStream();
+      }
+    } catch (_) {}
     _cameraService.dispose();
     super.dispose();
   }
@@ -239,6 +246,7 @@ class _FaceScanViewState extends State<FaceScanView> {
       }
 
       final XFile? image = await _cameraService.takePicture();
+      debugPrint("📸 Foto berhasil diambil: ${image?.path}");
       if (image == null) {
         if (mounted) setState(() => _isSubmittingAuto = false);
         return;

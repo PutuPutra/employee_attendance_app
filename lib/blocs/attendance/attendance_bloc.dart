@@ -16,11 +16,10 @@ part 'attendance_state.dart';
 class AttendanceBloc extends Bloc<AttendanceEvent, AttendanceState> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  // KONFIGURASI IMAGEKIT
-  // ⚠️ PENTING: Masukkan Private Key Anda di sini
-  String get _imageKitPrivateKey => dotenv.env['IMAGEKIT_PRIVATE_KEY'] ?? '';
-  final String _imageKitUrlEndpoint =
-      'https://upload.imagekit.io/api/v1/files/upload';
+  // KONFIGURASI LARAVEL STORAGE
+  String get _laravelUploadEndpoint {
+    return dotenv.env['LARAVEL_UPLOAD_ENDPOINT'] ?? '';
+  }
 
   AttendanceBloc() : super(AttendanceInitial()) {
     on<SubmitAttendance>(_onSubmitAttendance);
@@ -180,7 +179,7 @@ class AttendanceBloc extends Bloc<AttendanceEvent, AttendanceState> {
       final defaultBreakIn = schedule['breakIn']!;
       final defaultBreakOut = schedule['breakOut']!;
 
-      // Upload to ImageKit (Backup Cloud)
+      // Upload to Laravel Storage (Backup Cloud)
       String? imageUrl;
       try {
         final fileName =
@@ -190,31 +189,29 @@ class AttendanceBloc extends Bloc<AttendanceEvent, AttendanceState> {
         final String year = DateFormat('yyyy').format(now);
         final String month = DateFormat('MMMM').format(now);
         final String safeName = event.name.replaceAll(RegExp(r'\s+'), '_');
-        final String folderPath =
-            '/face_attendance/$year/$month/${event.employeeId}_$safeName/';
+        // Sesuaikan dengan variabel $folderPath di Controller PHP (tanpa prefix face_attendance)
+        final String folderPath = '$year/$month/${event.employeeId}_$safeName';
 
-        if (_imageKitPrivateKey.isEmpty) {
-          debugPrint("Warning: IMAGEKIT_PRIVATE_KEY tidak ditemukan di .env");
-        } else {
-          // Konversi gambar ke JPG valid & fix orientation sebelum upload
-          // Ini memastikan preview di ImageKit dashboard bisa muncul dengan benar
-          // Ini adalah GAMBAR ASLI (Real Image), bukan embedding.
-          final File processedImage = await _convertToJpg(
-            File(event.imagePath),
-          );
-          imageUrl = await _uploadToImageKit(
-            processedImage,
-            fileName,
-            folderPath,
-          );
+        // Konversi gambar ke JPG valid & fix orientation sebelum upload
+        // Ini memastikan preview bisa muncul dengan benar
+        // Ini adalah GAMBAR ASLI (Real Image), bukan embedding.
+        final File processedImage = await _convertToJpg(File(event.imagePath));
 
-          // Hapus file temporary hasil proses agar tidak menumpuk di cache
-          if (await processedImage.exists()) {
-            await processedImage.delete();
-          }
+        imageUrl = await _uploadToLaravel(
+          processedImage,
+          fileName,
+          folderPath,
+          event.employeeId,
+          event.name,
+        );
+
+        // Hapus file temporary hasil proses agar tidak menumpuk di cache
+        if (await processedImage.exists()) {
+          await processedImage.delete();
         }
+        debugPrint("✅ Upload Sukses. URL Gambar: $imageUrl");
       } catch (e) {
-        debugPrint("Warning: Gagal upload attendance ke ImageKit: $e");
+        debugPrint("Warning: Gagal upload attendance ke Laravel: $e");
       }
 
       // 4. Save to user_attendance (Raw Log)
@@ -277,34 +274,49 @@ class AttendanceBloc extends Bloc<AttendanceEvent, AttendanceState> {
     }
   }
 
-  Future<String> _uploadToImageKit(
+  Future<String> _uploadToLaravel(
     File file,
     String fileName,
     String folderPath,
+    String employeeId,
+    String name,
   ) async {
-    final request = http.MultipartRequest(
-      'POST',
-      Uri.parse(_imageKitUrlEndpoint),
+    final uri = Uri.parse(_laravelUploadEndpoint);
+    debugPrint("🚀 Memulai upload ke: $uri");
+    final request = http.MultipartRequest('POST', uri);
+
+    request.headers['Accept'] = 'application/json';
+
+    // Kirim data tambahan
+    request.fields['employee_id'] = employeeId;
+    request.fields['first_name'] = name;
+    request.fields['folder_path'] = folderPath;
+
+    // 'image' harus sesuai dengan validasi di Controller Laravel ($request->file('image'))
+    request.files.add(
+      await http.MultipartFile.fromPath('image', file.path, filename: fileName),
     );
 
-    request.fields['fileName'] = fileName;
-    request.fields['folder'] = folderPath;
-    request.fields['useUniqueFileName'] = 'false';
-
-    // Basic Auth menggunakan Private Key
-    final auth = 'Basic ' + base64Encode(utf8.encode('$_imageKitPrivateKey:'));
-    request.headers['Authorization'] = auth;
-
-    request.files.add(await http.MultipartFile.fromPath('file', file.path));
-
-    final response = await request.send();
+    final response = await request.send().timeout(
+      const Duration(seconds: 15),
+      onTimeout: () {
+        throw Exception(
+          'Connection Timeout. Cek IP Address Server: $_laravelUploadEndpoint',
+        );
+      },
+    );
 
     if (response.statusCode == 200 || response.statusCode == 201) {
       final respStr = await response.stream.bytesToString();
+      debugPrint("📩 Response dari Laravel: $respStr");
       final json = jsonDecode(respStr);
-      return json['url']; // URL gambar dari ImageKit
+      // Pastikan response Laravel mengembalikan key 'url'
+      return json['url'];
     } else {
-      throw Exception('ImageKit Upload Failed: ${response.statusCode}');
+      final errorBody = await response.stream.bytesToString();
+      throw Exception(
+        'Laravel Upload Failed: ${response.statusCode}, Body: $errorBody',
+      );
     }
   }
 
