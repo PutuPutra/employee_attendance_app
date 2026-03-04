@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:bloc/bloc.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:equatable/equatable.dart';
 import 'package:flutter/foundation.dart';
 import 'package:intl/intl.dart';
@@ -181,6 +182,7 @@ class AttendanceBloc extends Bloc<AttendanceEvent, AttendanceState> {
 
       // Upload to Laravel Storage (Backup Cloud)
       String? imageUrl;
+      File? processedImage;
       try {
         final fileName =
             '${event.employeeId}_${event.name}_attendance_${DateFormat('yyyyMMdd_HHmmss').format(now)}.jpg';
@@ -195,23 +197,24 @@ class AttendanceBloc extends Bloc<AttendanceEvent, AttendanceState> {
         // Konversi gambar ke JPG valid & fix orientation sebelum upload
         // Ini memastikan preview bisa muncul dengan benar
         // Ini adalah GAMBAR ASLI (Real Image), bukan embedding.
-        final File processedImage = await _convertToJpg(File(event.imagePath));
+        processedImage = await _convertToJpg(File(event.imagePath));
 
         imageUrl = await _uploadToLaravel(
-          processedImage,
+          processedImage!,
           fileName,
           folderPath,
           event.employeeId,
           event.name,
         );
 
-        // Hapus file temporary hasil proses agar tidak menumpuk di cache
-        if (await processedImage.exists()) {
-          await processedImage.delete();
-        }
         debugPrint("✅ Upload Sukses. URL Gambar: $imageUrl");
       } catch (e) {
         debugPrint("Warning: Gagal upload attendance ke Laravel: $e");
+      } finally {
+        // Hapus file temporary hasil proses agar tidak menumpuk di cache
+        if (processedImage != null && await processedImage.exists()) {
+          await processedImage.delete();
+        }
       }
 
       // 4. Save to user_attendance (Raw Log)
@@ -225,6 +228,8 @@ class AttendanceBloc extends Bloc<AttendanceEvent, AttendanceState> {
       }
 
       final Map<String, dynamic> attendanceData = {
+        // PENTING: Field ini wajib ada agar lolos Firestore Rules (request.resource.data.userId == request.auth.uid)
+        'userId': FirebaseAuth.instance.currentUser?.uid,
         'id_karyawan': event.employeeId,
         'name': event.name,
         'imagePath': event.imagePath,
@@ -282,10 +287,39 @@ class AttendanceBloc extends Bloc<AttendanceEvent, AttendanceState> {
     String name,
   ) async {
     final uri = Uri.parse(_laravelUploadEndpoint);
+
+    // VALIDASI IP: Mencegah penggunaan localhost/0.0.0.0 di HP Fisik
+    if (uri.host == '0.0.0.0' ||
+        uri.host == '127.0.0.1' ||
+        uri.host == 'localhost') {
+      throw Exception(
+        "Konfigurasi Salah: Jangan gunakan '${uri.host}' di .env Flutter untuk HP Fisik. Gunakan IP Laptop (contoh: 192.168.1.x)",
+      );
+    }
+
     debugPrint("🚀 Memulai upload ke: $uri");
     final request = http.MultipartRequest('POST', uri);
 
     request.headers['Accept'] = 'application/json';
+
+    // --- SECURITY FIX: Authentication Headers ---
+    // 1. User Auth: Mengirim Firebase ID Token (JWT)
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        final token = await user.getIdToken();
+        debugPrint("🔐 Token Firebase didapatkan (Length: ${token?.length})");
+        request.headers['Authorization'] = 'Bearer $token';
+      }
+    } catch (e) {
+      debugPrint("⚠️ Gagal mengambil token auth: $e");
+    }
+
+    // 2. App Auth: Mengirim API Key (dari .env)
+    final apiKey = dotenv.env['API_KEY'];
+    if (apiKey != null && apiKey.isNotEmpty) {
+      request.headers['X-API-KEY'] = apiKey;
+    }
 
     // Kirim data tambahan
     request.fields['employee_id'] = employeeId;
@@ -297,25 +331,41 @@ class AttendanceBloc extends Bloc<AttendanceEvent, AttendanceState> {
       await http.MultipartFile.fromPath('image', file.path, filename: fileName),
     );
 
-    final response = await request.send().timeout(
-      const Duration(seconds: 15),
-      onTimeout: () {
-        throw Exception(
-          'Connection Timeout. Cek IP Address Server: $_laravelUploadEndpoint',
-        );
-      },
-    );
+    try {
+      final response = await request.send().timeout(
+        const Duration(seconds: 30),
+        onTimeout: () {
+          throw Exception(
+            'Connection Timeout (30s). Gagal menghubungi Laptop.\nSOLUSI: Cek Firewall atau gunakan "ngrok http 8000" untuk bypass masalah jaringan lokal.',
+          );
+        },
+      );
 
-    if (response.statusCode == 200 || response.statusCode == 201) {
-      final respStr = await response.stream.bytesToString();
-      debugPrint("📩 Response dari Laravel: $respStr");
-      final json = jsonDecode(respStr);
-      // Pastikan response Laravel mengembalikan key 'url'
-      return json['url'];
-    } else {
-      final errorBody = await response.stream.bytesToString();
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final respStr = await response.stream.bytesToString();
+        debugPrint("📩 Response dari Laravel: $respStr");
+        final json = jsonDecode(respStr);
+        // Pastikan response Laravel mengembalikan key 'url'
+        return json['url'];
+      } else {
+        final errorBody = await response.stream.bytesToString();
+        if (response.statusCode == 404 &&
+            (errorBody.contains('<!DOCTYPE HTML') ||
+                errorBody.contains('<html'))) {
+          throw Exception(
+            'Salah Port Ngrok (404).\n'
+            'Server merespon dengan HTML Apache, bukan Laravel.\n'
+            'PENYEBAB: Ngrok jalan di port 80, tapi Laravel di port 8000.\n'
+            'SOLUSI: Stop ngrok, lalu jalankan: "ngrok http 8000"',
+          );
+        }
+        throw Exception(
+          'Laravel Upload Failed: ${response.statusCode}, Body: $errorBody',
+        );
+      }
+    } on SocketException catch (e) {
       throw Exception(
-        'Laravel Upload Failed: ${response.statusCode}, Body: $errorBody',
+        'Gagal Terhubung: $e. Pastikan Server jalan (host=0.0.0.0) & IP benar.',
       );
     }
   }
@@ -324,20 +374,8 @@ class AttendanceBloc extends Bloc<AttendanceEvent, AttendanceState> {
     // 1. Baca file gambar asli
     final bytes = await originalFile.readAsBytes();
 
-    // 2. Decode gambar menggunakan package 'image'
-    final image = img.decodeImage(bytes);
-
-    if (image == null) {
-      throw Exception("Gagal membaca gambar");
-    }
-
-    // 3. Perbaiki orientasi (penting untuk hasil kamera HP agar tidak miring)
-    // Fungsi bakeOrientation sudah kamu pakai juga di ml_service.dart
-    final fixedImage = img.bakeOrientation(image);
-
-    // 4. Encode (ubah) menjadi format JPG
-    // quality: 85 adalah standar yang bagus (seimbang antara size dan kualitas)
-    final jpgBytes = img.encodeJpg(fixedImage, quality: 85);
+    // 2. Jalankan pemrosesan berat di ISOLATE terpisah agar UI tidak FREEZE/MACET
+    final jpgBytes = await compute(_processImageInIsolate, bytes);
 
     // 5. Buat file temporary baru untuk memastikan tidak ada konflik path
     // dan nama file memiliki ekstensi .jpg yang valid.
@@ -351,4 +389,22 @@ class AttendanceBloc extends Bloc<AttendanceEvent, AttendanceState> {
 
     return newFile; // File ini siap di-upload ke ImageKit
   }
+}
+
+// Fungsi Top-Level (di luar class) untuk dijalankan di Isolate
+Uint8List _processImageInIsolate(Uint8List bytes) {
+  final image = img.decodeImage(bytes);
+  if (image == null) {
+    throw Exception("Gagal decode gambar di isolate");
+  }
+  // Fix orientasi & kompresi
+  final fixedImage = img.bakeOrientation(image);
+
+  // Resize agar tidak terlalu besar (max width 1024)
+  img.Image finalImage = fixedImage;
+  if (fixedImage.width > 1024) {
+    finalImage = img.copyResize(fixedImage, width: 1024);
+  }
+
+  return Uint8List.fromList(img.encodeJpg(finalImage, quality: 85));
 }
