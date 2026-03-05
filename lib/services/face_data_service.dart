@@ -21,6 +21,10 @@ class FaceDataService {
     return dotenv.env['LARAVEL_FACE_REGISTER_UPLOAD_ENDPOINT'] ?? '';
   }
 
+  String get _laravelDeleteEndpoint {
+    return dotenv.env['LARAVEL_FACE_REGISTER_DELETE_ENDPOINT'] ?? '';
+  }
+
   /// Registers face: Generates embedding, uploads to laravel, saves to Firestore.
   Future<String?> registerFace(XFile imageFile) async {
     final user = _auth.currentUser;
@@ -122,6 +126,57 @@ class FaceDataService {
     } finally {
       faceDetector.close();
       // mlService dispose handled internally or let GC handle it
+    }
+  }
+
+  Future<void> deleteFace(String employeeId, String imageUrl) async {
+    final uri = Uri.parse(_laravelDeleteEndpoint);
+
+    // VALIDASI IP
+    if (uri.host == '0.0.0.0' ||
+        uri.host == '127.0.0.1' ||
+        uri.host == 'localhost') {
+      throw Exception(
+        "Konfigurasi Salah: Jangan gunakan '${uri.host}' di .env Flutter. Gunakan IP Laptop (contoh: 192.168.1.x)",
+      );
+    }
+
+    debugPrint("🚀 Menghapus face data di Laravel: $uri");
+
+    final headers = <String, String>{'Accept': 'application/json'};
+
+    // Auth Headers
+    try {
+      final user = _auth.currentUser;
+      if (user != null) {
+        final token = await user.getIdToken();
+        headers['Authorization'] = 'Bearer $token';
+      }
+    } catch (e) {
+      debugPrint("⚠️ Gagal mengambil token auth: $e");
+    }
+
+    final apiKey = dotenv.env['API_KEY'];
+    if (apiKey != null && apiKey.isNotEmpty) {
+      headers['X-API-KEY'] = apiKey;
+    }
+
+    try {
+      final response = await http
+          .post(
+            uri,
+            headers: headers,
+            body: {'employee_id': employeeId, 'url': imageUrl},
+          )
+          .timeout(const Duration(seconds: 30));
+
+      if (response.statusCode != 200 && response.statusCode != 201) {
+        throw Exception(
+          'Gagal menghapus di server: ${response.statusCode}, Body: ${response.body}',
+        );
+      }
+    } on SocketException catch (e) {
+      throw Exception('Gagal Terhubung ke Server: $e');
     }
   }
 

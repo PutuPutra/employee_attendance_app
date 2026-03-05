@@ -69,7 +69,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
 
     final cardColor = isDark ? const Color(0xFF1C1C1E) : Colors.white;
 
-    const primaryColor = Color(0xFF0A84FF); // iOS Blue
+    const primaryColor = Color.fromARGB(255, 10, 255, 169); // iOS Blue
 
     return Scaffold(
       backgroundColor: bgColor,

@@ -1,0 +1,20 @@
+flutter_launcher_icons:
+  # Konfigurasi Umum
+  android: "ic_launcher"
+  ios: true
+  image_path: "assets/images/ic_launcher.png" # Icon default/fallback
+  min_sdk_android: 21 # Sesuaikan dengan minSdk di build.gradle
+
+  # Konfigurasi Adaptive Icon (Android 8.0+)
+  adaptive_icon_background: "#181818" # Ganti dengan kode warna background Anda atau path image
+  adaptive_icon_foreground: "assets/images/ic_launcher.png" # Logo transparan
+
+  # Konfigurasi iOS
+  remove_alpha_ios: true # Menghapus transparansi untuk iOS (karena iOS tidak support transparan)
+
+  # Opsional: Web
+  web:
+    generate: true
+    image_path: "assets/images/ic_launcher.png"
+    background_color: "#181818"
+    theme_color: "#181818"

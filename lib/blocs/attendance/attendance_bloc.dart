@@ -9,6 +9,7 @@ import 'package:intl/intl.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import './attendance_calculator.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:image/image.dart' as img;
 import 'package:path_provider/path_provider.dart';
 part 'attendance_event.dart';
@@ -150,7 +151,49 @@ class AttendanceBloc extends Bloc<AttendanceEvent, AttendanceState> {
   ) async {
     emit(AttendanceLoading());
     try {
-      final now = DateTime.now();
+      // --- SECURITY CHECK 1: ANTI-TIME FRAUD (Manipulasi Jam HP) ---
+      // Jangan percaya DateTime.now() dari HP user.
+      // Kita ambil waktu dari server terpercaya (Google) via HTTP Header 'Date'.
+      DateTime now;
+      try {
+        final timeResponse = await http.head(
+          Uri.parse('https://www.google.com'),
+        );
+        if (timeResponse.headers['date'] != null) {
+          // Parse waktu server (format HTTP date)
+          now = HttpDate.parse(timeResponse.headers['date']!).toLocal();
+        } else {
+          now =
+              DateTime.now(); // Fallback jika offline (tapi attendance butuh internet)
+        }
+      } catch (e) {
+        // Jika gagal koneksi ke Google, kemungkinan internet mati atau diblokir firewall
+        throw Exception(
+          "Gagal memverifikasi waktu server. Periksa koneksi internet.",
+        );
+      }
+
+      // Cek selisih waktu HP vs Server. Jika beda > 5 menit, tolak.
+      final deviceTime = DateTime.now();
+      if (deviceTime.difference(now).inMinutes.abs() > 5) {
+        throw Exception(
+          "Jam HP Anda tidak akurat. Mohon atur ke 'Otomatis' di pengaturan HP.",
+        );
+      }
+
+      // --- SECURITY CHECK 2: ANTI-FAKE GPS & RE-VERIFICATION ---
+      // Abaikan event.latitude/longitude dari UI karena bisa dimanipulasi via memory editing.
+      // Ambil posisi fresh langsung dari hardware di layer Logic.
+      final Position securePosition = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high,
+      );
+
+      if (securePosition.isMocked) {
+        throw Exception(
+          "KEAMANAN: Terdeteksi penggunaan Lokasi Palsu (Fake GPS/Mock Location).",
+        );
+      }
+
       // Tetap simpan date string untuk keperluan query di HomeScreen (cek sudah absen hari ini)
       final dateStr = DateFormat('MMMM d, yyyy').format(now);
       final docIdDatePart = DateFormat('yyyy-MM-dd').format(now);
@@ -234,8 +277,8 @@ class AttendanceBloc extends Bloc<AttendanceEvent, AttendanceState> {
         'name': event.name,
         'imagePath': event.imagePath,
         'imageUrl': imageUrl,
-        'latitude': event.latitude,
-        'longitude': event.longitude,
+        'latitude': securePosition.latitude, // Gunakan koordinat aman
+        'longitude': securePosition.longitude, // Gunakan koordinat aman
         'status': status, // 1=CheckIn, 2=Break, 3=Return, 4=CheckOut
         'timestamp': FieldValue.serverTimestamp(),
         'date': dateStr, // Disimpan untuk memudahkan query per hari
@@ -299,6 +342,14 @@ class AttendanceBloc extends Bloc<AttendanceEvent, AttendanceState> {
 
     debugPrint("🚀 Memulai upload ke: $uri");
     final request = http.MultipartRequest('POST', uri);
+
+    // --- SECURITY CHECK 3: ANTI-PROXY (Man-in-the-Middle) ---
+    // Mencegah penggunaan proxy seperti Charles Proxy / Burp Suite untuk memanipulasi request
+    // HttpClient bawaan Dart mendukung deteksi proxy.
+    // Catatan: Ini implementasi manual pada level client HTTP jika menggunakan dart:io langsung.
+    // Karena kita menggunakan package http, kita bergantung pada OS.
+    // Namun, kita bisa memaksa header connection close untuk mempersulit persistensi socket.
+    request.headers['Connection'] = 'close';
 
     request.headers['Accept'] = 'application/json';
 

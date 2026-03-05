@@ -423,7 +423,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     return Scaffold(
       body: Stack(
         children: [
-          /// ================= BLUE GRADIENT BACKGROUND =================
+          /// ================= GREEN GRADIENT BACKGROUND =================
           Container(
             height: 260,
             decoration: BoxDecoration(
@@ -432,14 +432,14 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                 end: Alignment.bottomCenter,
                 colors: isDark
                     ? [
-                        Colors.blue.shade900,
-                        Colors.blue.shade800,
-                        Colors.grey.shade900,
+                        Colors.green.shade900,
+                        Colors.green.shade800,
+                        Colors.lightGreen.shade400,
                       ]
                     : [
-                        Colors.blue.shade900,
-                        Colors.blue.shade800,
-                        Colors.blue.shade600,
+                        Colors.green.shade900,
+                        Colors.green.shade800,
+                        Colors.lightGreen.shade400,
                       ],
               ),
             ),
@@ -514,7 +514,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                                       icon: CupertinoIcons.arrow_right_circle,
                                       color: _hasCheckedInToday
                                           ? CupertinoColors.systemGrey
-                                          : CupertinoColors.systemBlue,
+                                          : CupertinoColors.systemGreen,
                                       onTap: _hasCheckedInToday
                                           ? () {} // Disable jika sudah check in
                                           : () => _go(
@@ -601,8 +601,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                                     child: Icon(
                                       CupertinoIcons.slider_horizontal_3,
                                       color: isDark
-                                          ? CupertinoColors.systemBlue
-                                          : CupertinoColors.systemBlue,
+                                          ? CupertinoColors.systemGreen
+                                          : CupertinoColors.systemGreen,
                                     ),
                                   ),
                                   const SizedBox(width: 14),
@@ -616,8 +616,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                                     child: Icon(
                                       CupertinoIcons.refresh,
                                       color: isDark
-                                          ? CupertinoColors.systemBlue
-                                          : CupertinoColors.systemBlue,
+                                          ? CupertinoColors.systemGreen
+                                          : CupertinoColors.systemGreen,
                                     ),
                                   ),
                                 ],

@@ -38,9 +38,9 @@ class FaceScreenView extends StatelessWidget {
               colors: isDark
                   ? [Colors.grey[700]!, Colors.grey.shade800, Colors.grey[900]!]
                   : [
-                      Colors.blue.shade900,
-                      Colors.blue.shade800,
-                      Colors.blue.shade400,
+                      Colors.green.shade900,
+                      Colors.green.shade800,
+                      Colors.lightGreen.shade400,
                     ],
             ),
           ),
@@ -64,63 +64,101 @@ class FaceScreenView extends StatelessWidget {
               }
             },
             builder: (context, state) {
-              return Column(
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.all(20.0),
-                    child: Text(
-                      l10n.faceRegistration,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 28,
-                        fontWeight: FontWeight.bold,
+              return LayoutBuilder(
+                builder: (context, constraints) {
+                  return SingleChildScrollView(
+                    child: ConstrainedBox(
+                      constraints: BoxConstraints(
+                        minHeight: constraints.maxHeight,
                       ),
-                      textAlign: TextAlign.center,
-                    ),
-                  ),
-                  Container(
-                    width: 300,
-                    height: 380,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: Colors.white, width: 4),
-                    ),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(12),
-                      child:
-                          (state is CameraInitializing ||
-                              state is FaceDetectionInitial)
-                          ? const Center(
-                              child: CircularProgressIndicator(
-                                color: Colors.white,
+                      child: IntrinsicHeight(
+                        child: Column(
+                          children: [
+                            Padding(
+                              padding: const EdgeInsets.all(20.0),
+                              child: Text(
+                                l10n.faceRegistration,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 28,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                                textAlign: TextAlign.center,
                               ),
-                            )
-                          : CameraPreview(
-                              context
-                                  .read<FaceDetectionBloc>()
-                                  .cameraService
-                                  .controller!,
                             ),
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                  Expanded(
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 20.0),
-                      child: _buildInstructionAndAction(context, state),
-                    ),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.all(20),
-                    child: TextButton(
-                      onPressed: () => Navigator.pop(context),
-                      child: Text(
-                        l10n.skipForNow,
-                        style: const TextStyle(color: Colors.white70),
+                            Container(
+                              width: 300,
+                              height: 380,
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(16),
+                                border: Border.all(
+                                  color: Colors.white,
+                                  width: 4,
+                                ),
+                              ),
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(12),
+                                child:
+                                    (state is CameraInitializing ||
+                                        state is FaceDetectionInitial)
+                                    ? const Center(
+                                        child: CircularProgressIndicator(
+                                          color: Colors.white,
+                                        ),
+                                      )
+                                    : LayoutBuilder(
+                                        builder: (context, constraints) {
+                                          final controller = context
+                                              .read<FaceDetectionBloc>()
+                                              .cameraService
+                                              .controller!;
+                                          return SizedBox(
+                                            width: constraints.maxWidth,
+                                            height: constraints.maxHeight,
+                                            child: FittedBox(
+                                              fit: BoxFit.cover,
+                                              child: SizedBox(
+                                                width: constraints.maxWidth,
+                                                height:
+                                                    constraints.maxWidth *
+                                                    controller
+                                                        .value
+                                                        .aspectRatio,
+                                                child: CameraPreview(
+                                                  controller,
+                                                ),
+                                              ),
+                                            ),
+                                          );
+                                        },
+                                      ),
+                              ),
+                            ),
+                            const SizedBox(height: 20),
+                            const Spacer(),
+                            Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 20.0,
+                              ),
+                              child: _buildInstructionAndAction(context, state),
+                            ),
+                            const Spacer(),
+                            Padding(
+                              padding: const EdgeInsets.all(20),
+                              child: TextButton(
+                                onPressed: () => Navigator.pop(context),
+                                child: Text(
+                                  l10n.skipForNow,
+                                  style: const TextStyle(color: Colors.white70),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
-                  ),
-                ],
+                  );
+                },
               );
             },
           ),
@@ -175,7 +213,7 @@ class FaceScreenView extends StatelessWidget {
               context.read<FaceDetectionBloc>().add(CaptureAndRegisterFace());
             },
             style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.lightBlueAccent,
+              backgroundColor: Colors.green, // iOS Green
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(20),
               ),

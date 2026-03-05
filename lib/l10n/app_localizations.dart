@@ -51,6 +51,10 @@ class AppLocalizations {
       _localizedValues[locale.languageCode]!['wrong_password']!;
   String get userDisabled =>
       _localizedValues[locale.languageCode]!['user_disabled']!;
+  String get loginManualRequired =>
+      _localizedValues[locale.languageCode]!['login_manual_required']!;
+  String get tooManyRequests =>
+      _localizedValues[locale.languageCode]!['too_many_requests']!;
 
   // Home Screen
   String get home => _localizedValues[locale.languageCode]!['home']!;
@@ -334,6 +338,8 @@ class AppLocalizations {
       _localizedValues[locale.languageCode]!['location_unknown']!;
   String get failedToDecodeImage =>
       _localizedValues[locale.languageCode]!['failed_to_decode_image']!;
+  String get faceScanInstruction =>
+      _localizedValues[locale.languageCode]!['face_scan_instruction']!;
 
   // Attendance Warning
   String get earlyAttendance =>
@@ -376,6 +382,9 @@ class AppLocalizations {
       'user_not_found': 'No user found for that email',
       'wrong_password': 'Wrong password provided',
       'user_disabled': 'User account is disabled',
+      'login_manual_required':
+          'Please login manually once to enable this feature.',
+      'too_many_requests': 'Too many attempts. Please try again later.',
 
       // Home Screen
       'home': 'Home',
@@ -494,7 +503,7 @@ class AppLocalizations {
           'For security, please log out and log in again to change email.',
       'email_already_in_use':
           'This email is already associated with another account.',
-      'invalid_credentials': 'Invalid credentials provided.',
+      'invalid_credentials': 'Incorrect Email or Password.',
 
       // Theme options
       'theme_system': 'System',
@@ -521,7 +530,7 @@ class AppLocalizations {
       'error': 'Error',
       'saving_image': 'Saving image locally...',
       'position_face_instruction':
-          'Position your face in the center and press the button.',
+          'Position your face in the center of the screen, make sure your eyes are looking directly at the camera, then press the button',
       'capture_face': 'Capture Face',
       'preparing_camera': 'Preparing camera...',
 
@@ -558,6 +567,8 @@ class AppLocalizations {
       'searching_location': 'Searching location...',
       'location_unknown': 'Location status unknown.',
       'failed_to_decode_image': 'Failed to decode image file',
+      'face_scan_instruction':
+          'Position your face in the center of the screen, make sure your eyes are looking directly at the camera',
 
       // Attendance Warning
       'early_attendance': 'Early Attendance',
@@ -592,6 +603,9 @@ class AppLocalizations {
       'user_not_found': 'Pengguna tidak ditemukan',
       'wrong_password': 'Kata sandi salah',
       'user_disabled': 'Akun dinonaktifkan',
+      'login_manual_required':
+          'Silakan login manual sekali untuk mengaktifkan fitur ini.',
+      'too_many_requests': 'Terlalu banyak percobaan. Silakan coba lagi nanti.',
 
       // Home Screen
       'home': 'Beranda',
@@ -713,7 +727,7 @@ class AppLocalizations {
       'requires_recent_login':
           'Demi keamanan, silakan keluar dan masuk lagi untuk mengubah email.',
       'email_already_in_use': 'Email ini sudah digunakan oleh akun lain.',
-      'invalid_credentials': 'Kredensial yang diberikan tidak valid.',
+      'invalid_credentials': 'Email atau Kata Sandi salah.',
 
       // Theme options
       'theme_system': 'Sistem',
@@ -740,7 +754,7 @@ class AppLocalizations {
       'error': 'Error',
       'saving_image': 'Menyimpan gambar secara lokal...',
       'position_face_instruction':
-          'Posisikan wajah Anda di tengah dan tekan tombol.',
+          'Posisikan wajah Anda di tengah layar, pastikan mata Anda melihat langsung ke kamera, lalu tekan tombol.',
       'capture_face': 'Ambil Gambar Wajah',
       'preparing_camera': 'Mempersiapkan kamera...',
 
@@ -778,6 +792,8 @@ class AppLocalizations {
       'searching_location': 'Mencari lokasi...',
       'location_unknown': 'Status lokasi tidak diketahui.',
       'failed_to_decode_image': 'Gagal men-decode file gambar',
+      'face_scan_instruction':
+          'Posisikan wajah Anda di tengah layar, pastikan mata Anda melihat langsung ke kamera',
 
       // Attendance Warning
       'early_attendance': 'Absensi Lebih Awal',

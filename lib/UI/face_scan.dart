@@ -59,6 +59,7 @@ class _FaceScanViewState extends State<FaceScanView> {
   bool _isCameraInitialized = false;
   int _lastFrameTime = 0; // Untuk throttling
   bool _isSubmittingAuto = false;
+  OverlayEntry? _instructionOverlay;
 
   @override
   void initState() {
@@ -66,6 +67,7 @@ class _FaceScanViewState extends State<FaceScanView> {
     _initializeCamera();
     _loadUserData();
     _updateTime();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _showInstruction());
   }
 
   Future<void> _initializeCamera() async {
@@ -111,6 +113,7 @@ class _FaceScanViewState extends State<FaceScanView> {
 
   @override
   void dispose() {
+    _removeInstruction();
     // Coba hentikan stream jika masih aktif untuk mengurangi log error buffer
     try {
       if (_cameraService.controller != null &&
@@ -415,7 +418,7 @@ class _FaceScanViewState extends State<FaceScanView> {
                       IconButton(
                         icon: const Icon(
                           Icons.arrow_back,
-                          color: Colors.blueAccent,
+                          color: Colors.greenAccent,
                         ),
                         onPressed: () => Navigator.pop(context),
                       ),
@@ -424,7 +427,7 @@ class _FaceScanViewState extends State<FaceScanView> {
                         style: const TextStyle(
                           fontSize: 24,
                           fontWeight: FontWeight.bold,
-                          color: Colors.blueAccent,
+                          color: Colors.greenAccent,
                         ),
                       ),
                     ],
@@ -464,7 +467,7 @@ class _FaceScanViewState extends State<FaceScanView> {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Icon(icon, color: Colors.blueAccent, size: 20),
+        Icon(icon, color: Colors.greenAccent, size: 20),
         const SizedBox(width: 10),
         Expanded(
           child: Text(
@@ -489,7 +492,11 @@ class _FaceScanViewState extends State<FaceScanView> {
         if (state is LocationLoading || state is LocationInitial) {
           content = Row(
             children: [
-              const Icon(Icons.location_on, color: Colors.blueAccent, size: 20),
+              const Icon(
+                Icons.location_on,
+                color: Colors.greenAccent,
+                size: 20,
+              ),
               const SizedBox(width: 10),
               Text(l10n.searchingLocation),
               const SizedBox(width: 10),
@@ -528,11 +535,65 @@ class _FaceScanViewState extends State<FaceScanView> {
     );
   }
 
+  void _showInstruction() {
+    final l10n = AppLocalizations.of(context);
+    _instructionOverlay = OverlayEntry(
+      builder: (context) => Positioned(
+        top: MediaQuery.of(context).padding.top + 10,
+        left: 20,
+        right: 20,
+        child: Material(
+          color: Colors.transparent,
+          child: FadeInDown(
+            duration: const Duration(milliseconds: 500),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              decoration: BoxDecoration(
+                color: Colors.orangeAccent,
+                borderRadius: BorderRadius.circular(12),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.2),
+                    blurRadius: 8,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.info_outline, color: Colors.white),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      l10n.faceScanInstruction,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    Overlay.of(context).insert(_instructionOverlay!);
+  }
+
+  void _removeInstruction() {
+    _instructionOverlay?.remove();
+    _instructionOverlay = null;
+  }
+
   void _showTopNotification(
     BuildContext context,
     String message, {
     bool isError = false,
   }) {
+    _removeInstruction();
     final overlay = Overlay.of(context);
     final overlayEntry = OverlayEntry(
       builder: (context) => Positioned(

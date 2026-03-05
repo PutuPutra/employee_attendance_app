@@ -1,6 +1,8 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:local_auth/local_auth.dart';
+import 'package:local_auth_android/local_auth_android.dart';
+import 'package:local_auth_darwin/local_auth_darwin.dart';
 
 class BiometricService {
   final LocalAuthentication _auth = LocalAuthentication();
@@ -29,9 +31,16 @@ class BiometricService {
     try {
       return await _auth.authenticate(
         localizedReason: localizedReason,
-        biometricOnly:
-            false, // Optimized: Force biometric only untuk keamanan dan UX yang lebih cepat
-        persistAcrossBackgrounding: true,
+        authMessages: const <AuthMessages>[
+          AndroidAuthMessages(
+            signInTitle: 'Verifikasi Biometrik',
+            cancelButton: 'Batal',
+          ),
+          IOSAuthMessages(cancelButton: 'Batal'),
+        ],
+        biometricOnly: false,
+        persistAcrossBackgrounding:
+            true, // directly replaces the old stickyAuth: true
       );
     } on LocalAuthException catch (e) {
       debugPrint(

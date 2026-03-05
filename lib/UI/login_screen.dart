@@ -68,29 +68,49 @@ class _LoginScreenState extends State<LoginScreen> {
                 MaterialPageRoute(builder: (_) => const HomeScreen()),
               );
             }
+          } on FirebaseAuthException catch (e) {
+            if (mounted) {
+              String message = l10n.loginFailed;
+              if (e.code == 'user-not-found') {
+                message = l10n.userNotFound;
+              } else if (e.code == 'wrong-password') {
+                message = l10n.wrongPassword;
+              } else if (e.code == 'user-disabled') {
+                message = l10n.userDisabled;
+              } else if (e.code == 'invalid-email') {
+                message = l10n.invalidEmailFormat;
+              } else if (e.code == 'invalid-credential') {
+                message = l10n.invalidCredentials;
+              } else if (e.code == 'too-many-requests') {
+                message = l10n.tooManyRequests;
+              }
+              _showTopNotification(context, message, isError: true);
+            }
           } catch (e) {
             if (mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('Login gagal: ${e.toString()}')),
+              _showTopNotification(
+                context,
+                '${l10n.loginFailed}: ${e.toString()}',
+                isError: true,
               );
             }
           } finally {
             if (mounted) setState(() => _isLoading = false);
           }
         } else if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text(
-                'Silakan login manual sekali untuk mengaktifkan fitur ini.',
-              ),
-            ),
+          _showTopNotification(
+            context,
+            l10n.loginManualRequired,
+            isError: true,
           );
         }
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.toString().replaceAll('Exception: ', ''))),
+        _showTopNotification(
+          context,
+          e.toString().replaceAll('Exception: ', ''),
+          isError: true,
         );
       }
     }
@@ -102,9 +122,11 @@ class _LoginScreenState extends State<LoginScreen> {
     final password = _passwordController.text.trim();
 
     if (email.isEmpty || password.isEmpty) {
-      ScaffoldMessenger.of(
+      _showTopNotification(
         context,
-      ).showSnackBar(SnackBar(content: Text(l10n.pleaseEnterEmailPassword)));
+        l10n.pleaseEnterEmailPassword,
+        isError: true,
+      );
       return;
     }
 
@@ -142,16 +164,16 @@ class _LoginScreenState extends State<LoginScreen> {
           message = l10n.invalidEmailFormat;
         } else if (e.code == 'user-disabled') {
           message = l10n.userDisabled;
+        } else if (e.code == 'invalid-credential') {
+          message = l10n.invalidCredentials;
+        } else if (e.code == 'too-many-requests') {
+          message = l10n.tooManyRequests;
         }
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(message)));
+        _showTopNotification(context, message, isError: true);
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(l10n.loginFailed)));
+        _showTopNotification(context, l10n.loginFailed, isError: true);
       }
     } finally {
       if (mounted) {
@@ -190,6 +212,69 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
+  void _showTopNotification(
+    BuildContext context,
+    String message, {
+    bool isError = false,
+  }) {
+    final overlay = Overlay.of(context);
+    final overlayEntry = OverlayEntry(
+      builder: (context) => Positioned(
+        top: MediaQuery.of(context).padding.top + 10,
+        left: 20,
+        right: 20,
+        child: Material(
+          color: Colors.transparent,
+          child: FadeInDown(
+            duration: const Duration(milliseconds: 500),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              decoration: BoxDecoration(
+                color: isError ? Colors.redAccent : Colors.green,
+                borderRadius: BorderRadius.circular(12),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.2),
+                    blurRadius: 8,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    isError ? Icons.error_outline : Icons.check_circle_outline,
+                    color: Colors.white,
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      message,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    overlay.insert(overlayEntry);
+
+    Future.delayed(const Duration(seconds: 3), () {
+      if (mounted) {
+        try {
+          overlayEntry.remove();
+        } catch (_) {}
+      }
+    });
+  }
+
   InputDecoration _iosInput(
     String hint,
     IconData icon,
@@ -198,7 +283,7 @@ class _LoginScreenState extends State<LoginScreen> {
   }) {
     return InputDecoration(
       hintText: hint,
-      prefixIcon: Icon(icon, color: Colors.blue.shade800),
+      prefixIcon: Icon(icon, color: Colors.green.shade800),
       filled: true,
       fillColor: isDark
           ? Colors.white.withValues(alpha: 0.9)
@@ -226,15 +311,15 @@ class _LoginScreenState extends State<LoginScreen> {
     return Scaffold(
       body: Stack(
         children: [
-          /// 🔵 GRADIENT BACKGROUND (Tetap biru untuk branding)
+          ///  GRADIENT BACKGROUND
           Container(
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 begin: Alignment.topCenter,
                 colors: [
-                  Colors.blue.shade900,
-                  Colors.blue.shade800,
-                  Colors.blue.shade400,
+                  Colors.green.shade900,
+                  Colors.green.shade800,
+                  Colors.lightGreen.shade400,
                 ],
               ),
             ),
@@ -363,7 +448,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           child: Text(
                             l10n.forgotPassword,
                             style: const TextStyle(
-                              color: Colors.blue,
+                              color: Colors.green,
                               fontWeight: FontWeight.w500,
                             ),
                           ),
@@ -381,7 +466,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                       ? _handleBiometricLogin
                                       : _login),
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.blue.shade900,
+                              backgroundColor: Colors.green.shade900,
                               elevation: 6,
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(30),

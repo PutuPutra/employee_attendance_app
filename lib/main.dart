@@ -12,12 +12,16 @@ import 'blocs/settings/settings_event.dart';
 import 'blocs/settings/settings_state.dart';
 import 'repositories/settings_repository.dart';
 import 'l10n/app_localizations.dart';
+import 'services/security_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   // Load environment variables (.env)
   await dotenv.load(fileName: ".env");
+
+  // Initialize Security Service (Anti-Mod & Anti-Root)
+  await SecurityService().initialize();
 
   // Lock orientation to portrait
   await SystemChrome.setPreferredOrientations([
@@ -74,7 +78,7 @@ class _AppView extends StatelessWidget {
 
         return MaterialApp(
           debugShowCheckedModeBanner: false,
-          title: 'SSG',
+          title: 'Clock Point',
 
           // Theme configuration
           theme: _buildThemeData(Brightness.light, fontFamily),
@@ -105,7 +109,7 @@ class _AppView extends StatelessWidget {
       fontFamily: fontFamily,
       // Customize theme sesuai kebutuhan
       colorScheme: ColorScheme.fromSeed(
-        seedColor: Colors.blue,
+        seedColor: Colors.green,
         brightness: brightness,
       ),
       appBarTheme: AppBarTheme(

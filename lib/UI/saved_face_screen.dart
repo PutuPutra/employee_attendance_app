@@ -4,6 +4,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import '../l10n/app_localizations.dart';
 import '../core/constants/storage_keys.dart';
+import 'package:gunas_employee_attendance/services/face_data_service.dart';
 
 class SavedFaceScreen extends StatefulWidget {
   const SavedFaceScreen({super.key});
@@ -21,6 +22,7 @@ class _SavedFaceScreenState extends State<SavedFaceScreen> {
 
   final _auth = FirebaseAuth.instance;
   final _firestore = FirebaseFirestore.instance;
+  final _faceDataService = FaceDataService();
 
   @override
   void initState() {
@@ -99,6 +101,35 @@ class _SavedFaceScreenState extends State<SavedFaceScreen> {
     }
 
     try {
+      // 1. Ambil data sebelum hapus dokumen untuk keperluan API Laravel
+      String? employeeIdToDelete;
+      String? imageUrlToDelete;
+      try {
+        final docSnap = await _firestore
+            .collection('face_register')
+            .doc(user.uid)
+            .get();
+        if (docSnap.exists) {
+          final data = docSnap.data();
+          employeeIdToDelete = data?[StorageKeys.employeeId];
+          imageUrlToDelete = data?['faceImageUrl'];
+        }
+      } catch (e) {
+        debugPrint("Error fetching data for deletion: $e");
+      }
+
+      // 2. Hapus gambar di Laravel (Server)
+      if (employeeIdToDelete != null && imageUrlToDelete != null) {
+        try {
+          await _faceDataService.deleteFace(
+            employeeIdToDelete,
+            imageUrlToDelete,
+          );
+        } catch (e) {
+          debugPrint("Warning: Gagal hapus gambar di server: $e");
+        }
+      }
+
       // Delete the document from face_register collection
       await _firestore.collection('face_register').doc(user.uid).delete();
 
@@ -240,6 +271,7 @@ class _SavedFaceScreenState extends State<SavedFaceScreen> {
                       return const Center(child: CupertinoActivityIndicator());
                     },
                     errorBuilder: (context, error, stackTrace) {
+                      debugPrint("❌ Error loading face image: $error");
                       return Container(
                         color: Colors.grey[200],
                         child: Icon(
